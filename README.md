@@ -1,14 +1,14 @@
-# Binomial Options Pricing Model
+# Options Playground 🎮
 
-An interactive web application for visualizing and understanding the binomial options pricing model.
+An interactive web application for exploring and experimenting with options pricing models and strategies.
 
 ## Features
 
-- Interactive binomial tree visualization
-- Real-time parameter adjustment
-- Support for European and American options
-- Greeks calculation and visualization
-- Educational tutorials and explanations
+- 🌳 **Interactive Binomial Trees** - Visualize European vs American options
+- ⚡ **Real-time Parameter Adjustment** - See changes instantly
+- 📊 **Multiple Option Types** - Calls and puts with early exercise analysis
+- 🎯 **Model Parameters Display** - View intermediate calculations (u, d, p, dt)
+- 🚀 **Extensible Platform** - Ready for new features and analysis tools
 
 ## Quick Start
 
@@ -24,6 +24,8 @@ An interactive web application for visualizing and understanding the binomial op
 source .venv/bin/activate
 streamlit run src/visualisation.py
 ```
+
+This will launch the Options Playground at `http://localhost:8501`
 
 **Command Line Interface:**
 ```bash

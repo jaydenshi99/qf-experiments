@@ -9,13 +9,26 @@ import streamlit as st
 from .core import calculate_node_coordinates, plot_american_options_tree, compare_european_american
 
 
-def theoretical_prices_tab(model_params, show_intermediate):
+def theoretical_prices_tab(model_params):
     """Theoretical Prices tab content"""
     try:
+        # Extract parameters from model_params
+        show_intermediate = model_params['show_intermediate']
+        
+        # Filter parameters for binomial model (exclude Monte Carlo specific ones)
+        binomial_params = {
+            'S0': model_params['S0'],
+            'K': model_params['K'],
+            'T': model_params['T'],
+            'r': model_params['r'],
+            'sigma': model_params['sigma'],
+            'n_steps': model_params['n_steps']
+        }
+        
         # Create models for both call and put options
-        call_params = model_params.copy()
+        call_params = binomial_params.copy()
         call_params['option_type'] = 'call'
-        put_params = model_params.copy()
+        put_params = binomial_params.copy()
         put_params['option_type'] = 'put'
         
         # Get all 4 option prices
