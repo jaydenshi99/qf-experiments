@@ -151,7 +151,7 @@ def main():
                 std_devs = np.zeros((len(allocations_bet2), len(allocations_bet1)))
                 
                 # Number of Monte Carlo simulations for std dev
-                n_sims = 1000
+                n_sims = 2000
                 
                 # Calculate expected return and std dev for each allocation
                 with st.spinner('Calculating heatmaps...'):
@@ -314,7 +314,7 @@ def main():
                 
                 # Display optimal allocations
                 if valid_mask.any():
-                    st.markdown("####Optimal Allocations")
+                    st.markdown("#### Optimal Allocations")
                     
                     col1, col2 = st.columns(2)
                     
