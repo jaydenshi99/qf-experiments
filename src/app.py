@@ -1,6 +1,5 @@
 """
 Simple Streamlit app for Binomial Options Pricing Model
-(We'll focus on backend first, this is just a placeholder)
 """
 
 import streamlit as st

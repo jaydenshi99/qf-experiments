@@ -133,11 +133,11 @@ def pnl_analysis_tab(model_params):
             with col5:
                 st.write(f"${leg['price']:.2f}")
             
-            with col6:
-                # Calculate total cost/credit for this position
-                total_cost = leg['position'] * leg['price'] * -1  # Negative because we pay for long positions
-                color = "red" if total_cost < 0 else "green" if total_cost > 0 else "gray"
-                st.markdown(f"<span style='color: {color}'>${total_cost:.2f}</span>", unsafe_allow_html=True)
+                with col6:
+                    # Calculate total cost/credit for this position
+                    total_cost = leg['position'] * leg['price'] * -1  # Negative because we pay for long positions
+                    color = "red" if total_cost < 0 else "green" if total_cost > 0 else "gray"
+                    st.markdown(f"<span style='color: {color}'>${total_cost:.2f}</span>", unsafe_allow_html=True)
             
             with col7:
                 if st.button("➕", key=f"increase_{i}", help="Increase position"):
@@ -151,6 +151,13 @@ def pnl_analysis_tab(model_params):
                     st.session_state.portfolio.pop(i)
                     st.rerun()
         
+        # Calculate and display cumulative total
+        cumulative_total = sum(leg['position'] * leg['price'] * -1 for leg in st.session_state.portfolio)
+        
+        col1, col2, col3, col4, col5, col6, col7, col8 = st.columns([1, 1, 1.5, 1.5, 1, 1.5, 1, 1])
+        with col6:
+            st.markdown(f"**Net Total: ${cumulative_total:.2f}**")
+
         # Clear all button
         if st.button("Clear All", type="secondary"):
             st.session_state.portfolio = []
@@ -178,22 +185,15 @@ def pnl_analysis_tab(model_params):
     np.random.seed(42)  # For reproducible results
     times, paths = geometric_brownian_motion(S0, mu, sigma, T, n_steps, n_paths)
     
-    # Display simulation info
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        avg_final = np.mean(paths[:, -1])
-        st.metric("Mean Final Price", f"${avg_final:.2f}")
-    
-    with col2:
-        std_final = np.std(paths[:, -1])
-        st.metric("Final Price Std Dev", f"${std_final:.2f}")
+    # Calculate statistics for display on graph
+    avg_final = np.mean(paths[:, -1])
+    std_final = np.std(paths[:, -1])
     
     # Visualization
     st.markdown("### 📊 Stock Price Paths")
     
     # Create the plot
-    fig, ax = plt.subplots(figsize=(12, 8))
+    fig, ax = plt.subplots(figsize=(10, 6))
     
     # Plot a subset of paths for clarity
     n_display = min(100, n_paths)
@@ -227,8 +227,21 @@ def pnl_analysis_tab(model_params):
     ax.set_xlabel('Time (Years)')
     ax.set_ylabel('Stock Price ($)')
     ax.set_title(f'Monte Carlo Simulation - Stock Price Paths (Colored by Final Price)')
-    ax.legend()
     ax.grid(True, alpha=0.3)
+    
+    # Create custom legend with statistics included
+    legend_elements = ax.get_legend_handles_labels()
+    legend_text = []
+    for handle, label in zip(legend_elements[0], legend_elements[1]):
+        legend_text.append(label)
+    
+    # Add statistics to the legend
+    legend_text.append(f'Mean Final: ${avg_final:.2f}')
+    legend_text.append(f'Std Dev: ${std_final:.2f}')
+    
+    # Create legend with all elements
+    ax.legend(legend_elements[0] + [plt.Line2D([0], [0], color='none')] * 2, 
+              legend_text, loc='upper left', framealpha=0.9)
     
     # Add colorbar to show price mapping
     sm = plt.cm.ScalarMappable(cmap=plt.cm.RdYlGn, norm=plt.Normalize(vmin=price_min, vmax=price_max))
@@ -236,29 +249,74 @@ def pnl_analysis_tab(model_params):
     cbar = plt.colorbar(sm, ax=ax, shrink=0.8)
     cbar.set_label('Final Stock Price ($)', rotation=270, labelpad=20)
     
-    st.pyplot(fig, use_container_width=True)
-    
-    # Option pricing using Monte Carlo
-    st.markdown("### 💰 Option Pricing via Monte Carlo")
-    
+    # Display charts side by side
     col1, col2 = st.columns(2)
     
     with col1:
-        st.markdown("**Call Option Analysis**")
-        call_payoffs = calculate_option_payoffs(paths, K, 'call')
-        call_price = np.exp(-r * T) * np.mean(call_payoffs)
-        call_std = np.std(call_payoffs)
-        
-        st.metric("Monte Carlo Call Price", f"${call_price:.4f}")
-        st.metric("Payoff Standard Deviation", f"${call_std:.2f}")
-        st.metric("In-the-Money Paths", f"{np.sum(call_payoffs > 0):,} ({100*np.sum(call_payoffs > 0)/n_paths:.1f}%)")
+        st.pyplot(fig, use_container_width=True)
     
     with col2:
-        st.markdown("**Put Option Analysis**")
-        put_payoffs = calculate_option_payoffs(paths, K, 'put')
-        put_price = np.exp(-r * T) * np.mean(put_payoffs)
-        put_std = np.std(put_payoffs)
-        
-        st.metric("Monte Carlo Put Price", f"${put_price:.4f}")
-        st.metric("Payoff Standard Deviation", f"${put_std:.2f}")
-        st.metric("In-the-Money Paths", f"{np.sum(put_payoffs > 0):,} ({100*np.sum(put_payoffs > 0)/n_paths:.1f}%)")
+        # Payoff Diagram
+        if st.session_state.get('portfolio', []):
+            # Create range of stock prices around current price
+            price_range = np.linspace(S0 * 0.5, S0 * 1.5, 200)
+            portfolio_payoff = np.zeros_like(price_range)
+            
+            # Calculate payoff for each position in portfolio
+            for leg in st.session_state.portfolio:
+                position = leg['position']
+                option_type = leg['type']
+                strike = leg['strike']
+                premium = leg['price']
+                
+                if option_type == 'call':
+                    # Call payoff: max(S - K, 0) for long, -max(S - K, 0) for short
+                    option_payoff = np.maximum(price_range - strike, 0)
+                else:  # put
+                    # Put payoff: max(K - S, 0) for long, -max(K - S, 0) for short
+                    option_payoff = np.maximum(strike - price_range, 0)
+                
+                # Account for position direction (long/short) and premium paid/received
+                if position > 0:  # Long position
+                    leg_payoff = position * (option_payoff - premium)
+                else:  # Short position
+                    leg_payoff = position * (option_payoff - premium)
+                
+                portfolio_payoff += leg_payoff
+            
+            # Create payoff diagram
+            fig_payoff, ax_payoff = plt.subplots(figsize=(10, 6))
+            
+            # Plot payoff line
+            ax_payoff.plot(price_range, portfolio_payoff, linewidth=2, color='blue', label='Portfolio P&L')
+            ax_payoff.fill_between(price_range, 0, portfolio_payoff, 
+                                  where=(portfolio_payoff >= 0), color='green', alpha=0.3, label='Profit')
+            ax_payoff.fill_between(price_range, 0, portfolio_payoff, 
+                                  where=(portfolio_payoff < 0), color='red', alpha=0.3, label='Loss')
+            
+            # Add breakeven points
+            breakeven_indices = np.where(np.diff(np.sign(portfolio_payoff)))[0]
+            for idx in breakeven_indices:
+                breakeven_price = price_range[idx]
+                ax_payoff.axvline(x=breakeven_price, color='orange', linestyle='--', alpha=0.7)
+                ax_payoff.text(breakeven_price, ax_payoff.get_ylim()[1] * 0.1, 
+                              f'BE: ${breakeven_price:.2f}', rotation=90, 
+                              verticalalignment='bottom', fontsize=9)
+            
+            # Add initial stock price line
+            ax_payoff.axvline(x=S0, color='black', linestyle=':', linewidth=2, 
+                             label=f'Initial Price: ${S0:.2f}', alpha=0.8)
+            
+            # Add zero line
+            ax_payoff.axhline(y=0, color='gray', linestyle='-', alpha=0.5)
+            
+            ax_payoff.set_xlabel('Stock Price at Expiration ($)')
+            ax_payoff.set_ylabel('Portfolio P&L ($)')
+            ax_payoff.set_title('Portfolio Payoff Diagram at Expiration')
+            ax_payoff.legend()
+            ax_payoff.grid(True, alpha=0.3)
+            
+            st.pyplot(fig_payoff, use_container_width=True)
+        else:
+            st.markdown("**📈 Portfolio Payoff Diagram**")
+            st.info("Add positions to your portfolio to see the payoff diagram.")

@@ -1,43 +1,28 @@
-# Options Playground 🎮
+# Experiments
 
-An interactive web application for exploring and experimenting with options pricing models and strategies.
+Contains various streamlit applications for exploring topics I find interesting in quantitative finance.
 
-## Features
-
-- 🌳 **Interactive Binomial Trees** - Visualize European vs American options
-- ⚡ **Real-time Parameter Adjustment** - See changes instantly
-- 📊 **Multiple Option Types** - Calls and puts with early exercise analysis
-- 🎯 **Model Parameters Display** - View intermediate calculations (u, d, p, dt)
-- 🚀 **Extensible Platform** - Ready for new features and analysis tools
-
-## Quick Start
+## Launching the Application
 
 1. Clone the repository
 2. Create a virtual environment: `python3 -m venv .venv`
 3. Activate the environment: `source .venv/bin/activate`
 4. Install dependencies: `pip install -r requirements.txt`
 
-### Running the Application
+### Running the Applications
 
-**Web Interface (Recommended):**
+**American vs European Options Visualizer:**
 ```bash
 source .venv/bin/activate
-streamlit run src/visualisation.py
+streamlit run src/american/app.py
 ```
 
-This will launch the Options Playground at `http://localhost:8501`
+This will launch the Options Visualizer at `http://localhost:8501`
 
-**Command Line Interface:**
+**Portfolio Hedging Application:**
 ```bash
-python src/cli.py --help
-python src/cli.py --S0 100 --K 105 --T 0.25 --r 0.05 --sigma 0.2 --steps 10 --type call
+source .venv/bin/activate
+streamlit run src/hedge/app.py
 ```
 
-To run the development server:
-```bash
-streamlit run src/app.py
-```
-
-## License
-
-MIT License - see LICENSE file for details.
+This will launch the Portfolio Hedging app at `http://localhost:8501`

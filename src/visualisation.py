@@ -12,7 +12,7 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Import the main function from the modular structure
-from src.visualisation.main import main
+from src.american.main import main
 
 if __name__ == "__main__":
     main()
