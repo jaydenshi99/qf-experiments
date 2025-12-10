@@ -41,7 +41,7 @@ def main():
                       help="Probability that the coin lands heads")
         
         st.markdown("---")
-        developer_mode = st.checkbox("🔧 Developer Mode", value=False,
+        developer_mode = st.checkbox("Developer Mode", value=False,
                                      help="Show performance testing and debugging tools")
         
     st.markdown("""
@@ -351,7 +351,7 @@ def main():
     if developer_mode and st.session_state.bets:
         st.markdown("---")
         
-        with st.expander("🧪 Performance Testing", expanded=False):
+        with st.expander("Performance Testing", expanded=False):
             st.markdown("""
             Allocate money to your bets and compare the analytical calculation 
             (exact using binomial distribution) vs Monte Carlo simulation.
