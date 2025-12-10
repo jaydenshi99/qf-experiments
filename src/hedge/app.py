@@ -151,7 +151,7 @@ def main():
                 std_devs = np.zeros((len(allocations_bet2), len(allocations_bet1)))
                 
                 # Number of Monte Carlo simulations for std dev
-                n_sims = 2000
+                n_sims = 1000
                 
                 # Calculate expected return and std dev for each allocation
                 with st.spinner('Calculating heatmaps...'):
@@ -237,8 +237,11 @@ def main():
                         for j in range(len(allocations_bet2)):
                             total_allocations[j, i] = allocations_bet1[i] + allocations_bet2[j]
                     
-                    # For each total allocation level, find the minimum standard deviation
-                    # Group by total allocation and find minimum std dev allocation
+                    # Calculate risk per dollar (std dev / capital)
+                    std_per_dollar = std_devs / (total_allocations + 1e-10)
+                    
+                    # For each total allocation level, find the minimum risk per dollar
+                    # Group by total allocation and find minimum risk/dollar allocation
                     min_std_points = []
                     
                     # Consider total allocations from 0 to 100% in steps
@@ -247,15 +250,15 @@ def main():
                         # Find all allocations that sum to approximately this total
                         tolerance = 0.015  # Within 1.5%
                         matching_mask = np.abs(total_allocations - total_frac) < tolerance
-                        matching_mask = matching_mask & ~np.isnan(std_devs)
+                        matching_mask = matching_mask & ~np.isnan(std_devs) & (total_allocations > 0)
                         
                         if np.any(matching_mask):
-                            # Find minimum std dev among these allocations
-                            min_std_idx = np.nanargmin(np.where(matching_mask, std_devs, np.inf))
-                            min_std_i, min_std_j = np.unravel_index(min_std_idx, std_devs.shape)
+                            # Find minimum risk per dollar among these allocations
+                            min_risk_idx = np.nanargmin(np.where(matching_mask, std_per_dollar, np.inf))
+                            min_risk_i, min_risk_j = np.unravel_index(min_risk_idx, std_per_dollar.shape)
                             
-                            alloc1_pct = allocations_bet1[min_std_j] * 100
-                            alloc2_pct = allocations_bet2[min_std_i] * 100
+                            alloc1_pct = allocations_bet1[min_risk_j] * 100
+                            alloc2_pct = allocations_bet2[min_risk_i] * 100
                             min_std_points.append((alloc1_pct, alloc2_pct))
                     
                     if np.any(min_std_points):
@@ -292,10 +295,7 @@ def main():
                             # Single point
                             ax2.plot(min_std_points[0][0], min_std_points[0][1], 'b*', markersize=15)
                     
-                    # Find minimum std dev per dollar
-                    # Std dev normalized by total capital allocated
-                    std_per_dollar = std_devs / (total_allocations + 1e-10)  # Add small epsilon to avoid division by zero
-                    
+                    # Find minimum std dev per dollar (already calculated above)
                     # Exclude zero allocations for the metric
                     non_zero_mask = total_allocations > 0
                     min_std_per_dollar = np.nanmin(std_per_dollar[non_zero_mask])
