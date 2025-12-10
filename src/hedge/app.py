@@ -127,6 +127,226 @@ def main():
     else:
         st.info("No bets entered yet. Click 'Add New Bet' above to get started.")
     
+    # Allocation Heatmap Section, only works for 2 bets
+    if st.session_state.bets:
+        st.markdown("---")
+        st.markdown("### Allocation Heatmaps")
+    
+    if len(st.session_state.bets) == 2:
+        st.markdown("""
+        Explore the expected return and variance for different allocations of capital between your two bets.
+        Calculated with total capital = $1.
+        """)
+        
+        if st.button("Generate Heatmap", type="primary"):
+            try:
+                step_size = 0.02
+                
+                # Create allocation grid (0% to 100%)
+                allocations_bet1 = np.arange(0, 1 + step_size, step_size)
+                allocations_bet2 = np.arange(0, 1 + step_size, step_size)
+                
+                # Initialize results grids
+                expected_returns = np.zeros((len(allocations_bet2), len(allocations_bet1)))
+                std_devs = np.zeros((len(allocations_bet2), len(allocations_bet1)))
+                
+                # Number of Monte Carlo simulations for std dev
+                n_sims = 1000
+                
+                # Calculate expected return and std dev for each allocation
+                with st.spinner('Calculating heatmaps...'):
+                    for i, alloc1 in enumerate(allocations_bet1):
+                        for j, alloc2 in enumerate(allocations_bet2):
+                            if alloc1 + alloc2 <= 1.0:  # Valid allocation
+                                allocations = [alloc1, alloc2]
+                                
+                                # Analytical expected return
+                                result = calculate_expected_profit_analytical(
+                                    st.session_state.bets,
+                                    allocations,
+                                    p
+                                )
+                                expected_returns[j, i] = result['total_expected_profit'] * 100
+                                
+                                # Monte Carlo standard deviation
+                                profits = calculate_expected_profit_simulation(
+                                    st.session_state.bets,
+                                    allocations,
+                                    p,
+                                    n_simulations=n_sims,
+                                    seed=42
+                                )
+                                std_devs[j, i] = np.std(profits)
+                            else:
+                                expected_returns[j, i] = np.nan  # Invalid allocation
+                                std_devs[j, i] = np.nan
+                
+                # Create side-by-side heatmaps
+                fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(20, 8))
+                
+                # LEFT HEATMAP: Expected Return
+                masked_returns = np.ma.masked_invalid(expected_returns)
+                max_abs = max(abs(np.nanmin(expected_returns)), abs(np.nanmax(expected_returns)))
+                
+                im1 = ax1.imshow(masked_returns, origin='lower', cmap='RdYlGn', 
+                                extent=[0, 100, 0, 100], aspect='auto',
+                                vmin=-max_abs, vmax=max_abs)
+                
+                cbar1 = plt.colorbar(im1, ax=ax1)
+                cbar1.set_label('Expected Return (%)', rotation=270, labelpad=20, fontsize=11)
+                
+                constraint_x = np.linspace(0, 100, 100)
+                constraint_y = 100 - constraint_x
+                ax1.plot(constraint_x, constraint_y, 'b--', linewidth=2, alpha=0.7)
+                
+                valid_mask = ~np.isnan(expected_returns)
+                if valid_mask.any():
+                    max_idx = np.nanargmax(expected_returns)
+                    max_i, max_j = np.unravel_index(max_idx, expected_returns.shape)
+                    optimal_alloc1_pct = allocations_bet1[max_j] * 100
+                    optimal_alloc2_pct = allocations_bet2[max_i] * 100
+                    optimal_return = expected_returns[max_i, max_j]
+                    
+                    ax1.plot(optimal_alloc1_pct, optimal_alloc2_pct, 'r*', markersize=15)
+                
+                ax1.set_xlabel(f'Bet 1: {st.session_state.bets[0]["condition"]} (%)', fontsize=11, fontweight='bold')
+                ax1.set_ylabel(f'Bet 2: {st.session_state.bets[1]["condition"]} (%)', fontsize=11, fontweight='bold')
+                ax1.set_title('Expected Return (%)', fontsize=13, fontweight='bold')
+                ax1.grid(True, alpha=0.3, linestyle='--')
+                ax1.set_xlim(0, 100)
+                ax1.set_ylim(0, 100)
+                
+                # RIGHT HEATMAP: Standard Deviation
+                masked_stddev = np.ma.masked_invalid(std_devs)
+                
+                # Use reversed colormap: green (low std dev) to red (high std dev)
+                im2 = ax2.imshow(masked_stddev, origin='lower', cmap='RdYlGn_r', 
+                                extent=[0, 100, 0, 100], aspect='auto',
+                                vmin=np.nanmin(std_devs), vmax=np.nanmax(std_devs))
+                
+                cbar2 = plt.colorbar(im2, ax=ax2)
+                cbar2.set_label('Standard Deviation ($)', rotation=270, labelpad=20, fontsize=11)
+                
+                ax2.plot(constraint_x, constraint_y, 'b--', linewidth=2, alpha=0.7)
+                
+                # Find and plot line through minimum risk points
+                if valid_mask.any():
+                    # Create mask for non-zero allocations
+                    total_allocations = np.zeros_like(std_devs)
+                    for i in range(len(allocations_bet1)):
+                        for j in range(len(allocations_bet2)):
+                            total_allocations[j, i] = allocations_bet1[i] + allocations_bet2[j]
+                    
+                    # For each total allocation level, find the minimum standard deviation
+                    # Group by total allocation and find minimum std dev allocation
+                    min_std_points = []
+                    
+                    # Consider total allocations from 0 to 100% in steps
+                    for total_pct in np.arange(0, 101, 2):  # Every 2%
+                        total_frac = total_pct / 100.0
+                        # Find all allocations that sum to approximately this total
+                        tolerance = 0.015  # Within 1.5%
+                        matching_mask = np.abs(total_allocations - total_frac) < tolerance
+                        matching_mask = matching_mask & ~np.isnan(std_devs)
+                        
+                        if np.any(matching_mask):
+                            # Find minimum std dev among these allocations
+                            min_std_idx = np.nanargmin(np.where(matching_mask, std_devs, np.inf))
+                            min_std_i, min_std_j = np.unravel_index(min_std_idx, std_devs.shape)
+                            
+                            alloc1_pct = allocations_bet1[min_std_j] * 100
+                            alloc2_pct = allocations_bet2[min_std_i] * 100
+                            min_std_points.append((alloc1_pct, alloc2_pct))
+                    
+                    if np.any(min_std_points):
+                        # Plot minimum std dev frontier points
+                        if len(min_std_points) > 0:
+                            ms_array = np.array(min_std_points)
+                            ax2.scatter(ms_array[:, 0], ms_array[:, 1], 
+                                       c='cyan', s=15, alpha=0.8, edgecolors='blue', linewidth=0.5,
+                                       label='Minimum Risk Frontier', zorder=5)
+                        
+                        hedge_slope = None
+                        
+                        if len(min_std_points) > 1:
+                            # Fit a line through these points
+                            points_array = np.array(min_std_points)
+                            x_coords = points_array[:, 0]
+                            y_coords = points_array[:, 1]
+                            
+                            # Linear regression
+                            coeffs = np.polyfit(x_coords, y_coords, 1)
+                            hedge_slope = coeffs[0]
+                            
+                            # Plot the line
+                            x_line = np.linspace(x_coords.min(), x_coords.max(), 100)
+                            y_line = coeffs[0] * x_line + coeffs[1]
+                            
+                            # Clip to valid range: y >= 0, y <= 100, AND x + y <= 100
+                            valid_line_mask = (y_line >= 0) & (y_line <= 100) & (x_line + y_line <= 100)
+                            
+                            if np.any(valid_line_mask):
+                                ax2.plot(x_line[valid_line_mask], y_line[valid_line_mask], 
+                                        'b-', linewidth=3, alpha=0.8, label='Minimum Risk Line')
+                        elif len(min_std_points) == 1:
+                            # Single point
+                            ax2.plot(min_std_points[0][0], min_std_points[0][1], 'b*', markersize=15)
+                    
+                    # Find minimum std dev per dollar
+                    # Std dev normalized by total capital allocated
+                    std_per_dollar = std_devs / (total_allocations + 1e-10)  # Add small epsilon to avoid division by zero
+                    
+                    # Exclude zero allocations for the metric
+                    non_zero_mask = total_allocations > 0
+                    min_std_per_dollar = np.nanmin(std_per_dollar[non_zero_mask])
+                
+                ax2.set_xlabel(f'Bet 1: {st.session_state.bets[0]["condition"]} (%)', fontsize=11, fontweight='bold')
+                ax2.set_ylabel(f'Bet 2: {st.session_state.bets[1]["condition"]} (%)', fontsize=11, fontweight='bold')
+                ax2.set_title(f'Standard Deviation (Risk) - {n_sims:,} simulations', fontsize=13, fontweight='bold')
+                ax2.legend(loc='upper right', fontsize=9)
+                ax2.grid(True, alpha=0.3, linestyle='--')
+                ax2.set_xlim(0, 100)
+                ax2.set_ylim(0, 100)
+                
+                plt.tight_layout()
+                
+                st.pyplot(fig)
+                
+                # Display optimal allocations
+                if valid_mask.any():
+                    st.markdown("####Optimal Allocations")
+                    
+                    col1, col2 = st.columns(2)
+                    
+                    with col1:
+                        st.markdown("**Best Expected Return:**")
+                        subcol1, subcol2, subcol3 = st.columns(3)
+                        with subcol1:
+                            st.metric("Bet 1", f"{optimal_alloc1_pct:.1f}%")
+                        with subcol2:
+                            st.metric("Bet 2", f"{optimal_alloc2_pct:.1f}%")
+                        with subcol3:
+                            st.metric("Return", f"{optimal_return:.2f}%")
+                    
+                    with col2:
+                        st.markdown("**Minimum Risk Hedge:**")
+                        subcol1, subcol2 = st.columns(2)
+                        with subcol1:
+                            if hedge_slope is not None:
+                                st.metric("Hedge Ratio", f"y = {hedge_slope:.4f}x")
+                            else:
+                                st.info("Not enough points to fit line")
+                        with subcol2:
+                            st.metric("Min Risk/$", f"${min_std_per_dollar:.4f}",
+                                     help="Minimum standard deviation per dollar invested - risk per unit capital")
+                
+            except Exception as e:
+                st.error(f"Error generating heatmap: {str(e)}")
+                st.exception(e)
+    
+    elif st.session_state.bets and len(st.session_state.bets) != 2:
+        st.info(f"Allocation heatmap is only available for exactly 2 bets. You currently have {len(st.session_state.bets)} bet(s).")
+    
     # Performance Testing Section (only in developer mode)
     if developer_mode and st.session_state.bets:
         st.markdown("---")

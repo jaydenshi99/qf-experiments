@@ -138,11 +138,11 @@ def calculate_expected_profit_analytical(bets, allocations, p):
             prob_win = calculate_win_probability(t, operator, k, p)
             
             # Calculate expected profit for this bet
-            # Win: net profit = allocation * (odds - 1)
-            # Lose: net loss = -allocation
-            win_profit = allocation * (bet['odds'] - 1)
-            lose_profit = -allocation
-            expected_profit = prob_win * win_profit + (1 - prob_win) * lose_profit
+            # Win: get back allocation * odds
+            # Lose: lose the allocation
+            win_amount = allocation * bet['odds']
+            lose_amount = -allocation
+            expected_profit = prob_win * win_amount + (1 - prob_win) * lose_amount
             
             total_expected += expected_profit
             
@@ -224,10 +224,10 @@ def calculate_expected_profit_simulation(bets, allocations, p, n_simulations=100
         for bet, allocation in zip(bets, allocations):
             try:
                 if evaluate_condition(bet['condition'], H):
-                    # Bet wins: net profit = allocation * (odds - 1)
-                    profit += allocation * (bet['odds'] - 1)
+                    # Bet wins: receive allocation * odds
+                    profit += allocation * bet['odds']
                 else:
-                    # Bet loses: net loss = -allocation
+                    # Bet loses: lose the allocation
                     profit -= allocation
             except:
                 # If evaluation fails, treat as loss
