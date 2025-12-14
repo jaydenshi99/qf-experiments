@@ -57,6 +57,8 @@ def parse_payoff_function(payoff_expr):
         <class '_ast.BinOp'>
     """
     try:
+        # Strip whitespace to avoid "unexpected indent" errors
+        payoff_expr = payoff_expr.strip()
         tree = ast.parse(payoff_expr, mode='eval')
         return tree.body
     except Exception as e:
