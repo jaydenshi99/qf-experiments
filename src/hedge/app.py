@@ -30,7 +30,7 @@ def main():
         st.session_state.bets = []
     
     # Render sidebar and get parameters
-    p, developer_mode = render_sidebar()
+    p = render_sidebar()
     
     # Render introduction
     render_intro()
@@ -42,9 +42,8 @@ def main():
     # Heatmap section
     render_heatmap_section(st.session_state.bets, p)
     
-    # Performance testing section (only in developer mode)
-    if developer_mode and st.session_state.bets:
-        render_performance_testing_section(st.session_state.bets, p)
+    # Performance testing section
+    render_performance_testing_section(st.session_state.bets, p)
 
 
 if __name__ == "__main__":

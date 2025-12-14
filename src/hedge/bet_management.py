@@ -3,6 +3,7 @@ Bet management functions for adding, displaying, and deleting bets.
 """
 
 import streamlit as st
+from .presets import PRESET_TYPES
 
 
 def render_add_bet_section():
@@ -13,39 +14,106 @@ def render_add_bet_section():
     with st.expander("Add New Bet", expanded=len(st.session_state.bets) == 0):
         bet_type = st.radio(
             "Bet Type",
-            ["Simple Bet (Condition + Odds)", "Payoff Function"],
+            ["Preset", " Custom"],
             key="new_bet_type",
-            help="Simple Bet: condition-based with fixed odds. Payoff Function: flexible expression-based payoffs."
+            help="Preset: common bet types with easy parameters. Custom: flexible expression-based payoffs."
         )
         
-        if bet_type == "Simple Bet (Condition + Odds)":
-            col1, col2 = st.columns([3, 1])
+        if bet_type == "Preset":
+            # Select preset type
+            preset_name = st.selectbox(
+                "Preset Type",
+                options=list(PRESET_TYPES.keys()),
+                key="preset_type",
+                help="Select a preset bet type"
+            )
             
-            with col1:
-                bet_condition = st.text_input(
-                    "Condition",
-                    value="H_2 == 1",
-                    key="new_bet_condition",
-                    help="Payout condition (e.g., 'H_2 == 1', 'H_5 == 3', 'H_5 < 10')"
-                )
+            preset_info = PRESET_TYPES[preset_name]
+            st.caption(preset_info["description"])
             
-            with col2:
-                bet_odds = st.number_input(
-                    "Odds",
-                    min_value=0.01,
-                    value=2.00,
-                    step=0.05,
-                    format="%.2f",
-                    key="new_bet_odds",
-                    help="x : 1 odds"
-                )
+            # Handle Simple Bet specially (it uses condition + odds, not payoff function)
+            if preset_info.get("type") == "simple":
+                params = preset_info["params"]
+                col1, col2 = st.columns([3, 1])
+                
+                with col1:
+                    bet_condition = st.text_input(
+                        params["condition"]["label"],
+                        value=params["condition"]["default"],
+                        key="preset_condition",
+                        help=params["condition"]["help"]
+                    )
+                
+                with col2:
+                    bet_odds = st.number_input(
+                        params["odds"]["label"],
+                        min_value=params["odds"]["min"],
+                        value=params["odds"]["default"],
+                        step=params["odds"].get("step", 0.05),
+                        format="%.2f",
+                        key="preset_odds",
+                        help=params["odds"]["help"]
+                    )
+                
+                if st.button("Add Bet", type="primary", key="add_preset_bet"):
+                    st.session_state.bets.append({
+                        'condition': bet_condition,
+                        'odds': bet_odds,
+                        'preset_type': preset_name
+                    })
+                    st.rerun()
             
-            if st.button("Add Bet", type="primary", key="add_simple_bet"):
-                st.session_state.bets.append({
-                    'condition': bet_condition,
-                    'odds': bet_odds
-                })
-                st.rerun()
+            else:
+                # Handle other presets (generate payoff functions)
+                params = preset_info["params"]
+                param_values = {}
+                
+                # Create input fields based on preset parameters
+                col1, col2, col3 = st.columns(3)
+                
+                with col1:
+                    param_values["strike"] = st.number_input(
+                        params["strike"]["label"],
+                        min_value=params["strike"]["min"],
+                        value=params["strike"]["default"],
+                        step=1,
+                        key="preset_strike",
+                        help=params["strike"]["help"]
+                    )
+                
+                with col2:
+                    param_values["time_to_expiry"] = st.number_input(
+                        params["time_to_expiry"]["label"],
+                        min_value=params["time_to_expiry"]["min"],
+                        value=params["time_to_expiry"]["default"],
+                        step=1,
+                        key="preset_time",
+                        help=params["time_to_expiry"]["help"]
+                    )
+                
+                with col3:
+                    param_values["payout_multiplier"] = st.number_input(
+                        params["payout_multiplier"]["label"],
+                        min_value=params["payout_multiplier"]["min"],
+                        value=params["payout_multiplier"]["default"],
+                        step=params["payout_multiplier"].get("step", 0.01),
+                        format="%.2f",
+                        key="preset_payout",
+                        help=params["payout_multiplier"]["help"]
+                    )
+                
+                # Generate payoff function preview
+                payoff_expr = preset_info["function"](**param_values)
+                st.code(payoff_expr, language="python")
+                st.caption("Generated payoff function")
+                
+                if st.button("Add Bet", type="primary", key="add_preset_bet"):
+                    st.session_state.bets.append({
+                        'payoff': payoff_expr,
+                        'preset_type': preset_name,
+                        'preset_params': param_values
+                    })
+                    st.rerun()
         
         else:  # Payoff Function
             st.markdown("""
@@ -107,10 +175,14 @@ def render_bets_display():
                     st.code(bet.get('condition', 'N/A'))
             
             with col3:
-                if 'payoff' in bet:
+                if 'preset_type' in bet:
+                    st.caption(f"Preset: {bet['preset_type']}")
+                elif 'payoff' in bet:
                     st.caption("Payoff Function")
-                else:
+                elif 'condition' in bet:
                     st.caption(f"Simple ({bet.get('odds', 'N/A'):.2f}x)")
+                else:
+                    st.caption("Unknown")
             
             with col4:
                 if st.button("Delete", key=f"delete_{i}", help="Delete bet"):

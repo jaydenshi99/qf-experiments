@@ -13,12 +13,8 @@ def render_sidebar():
         st.markdown("### Market Parameters")
         p = st.slider("Probability of Heads (p)", 0.0, 1.0, 0.5, 0.01, 
                       help="Probability that the coin lands heads")
-        
-        st.markdown("---")
-        developer_mode = st.checkbox("Developer Mode", value=False,
-                                     help="Show performance testing and debugging tools")
     
-    return p, developer_mode
+    return p
 
 
 def render_intro():

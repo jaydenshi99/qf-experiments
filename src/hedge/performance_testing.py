@@ -15,9 +15,11 @@ from src.hedge.calculations import (
 
 def render_performance_testing_section(bets, p):
     """Render the performance testing section."""
-    st.markdown("---")
+    if bets:
+        st.markdown("---")
+        st.markdown("### Performance Testing")
     
-    with st.expander("Performance Testing", expanded=False):
+    if bets:
         st.markdown("""
         Allocate money to your bets and compare the analytical calculation 
         (exact using binomial distribution) vs Monte Carlo simulation.
@@ -66,7 +68,7 @@ def render_performance_testing_section(bets, p):
                 help="For reproducible results"
             )
         
-        if st.button("Calculate Performance", type="primary"):
+        if st.button("Calculate Performance", type="primary", key="calculate_performance"):
             # Calculate using both methods
             try:
                 # Set random seed for reproducibility
