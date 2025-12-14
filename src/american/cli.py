@@ -70,7 +70,7 @@ def main():
         print(f"Terminal Nodes: {len(model.tree.get_terminal_nodes())}")
         
     except ValueError as e:
-        print(f"❌ Error: {e}")
+        print(f"Error: {e}")
         sys.exit(1)
 
 if __name__ == "__main__":

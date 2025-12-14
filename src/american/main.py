@@ -13,7 +13,6 @@ from .pnl import pnl_analysis_tab
 def main():
     st.set_page_config(
         page_title="Options Visualisation",
-        page_icon="🎮",
         layout="wide"
     )
     
@@ -21,10 +20,10 @@ def main():
     
     # Top bar selector (moved before sidebar to determine layout)
     # Portfolio Analysis temporarily disabled
-    selected_view = "📈 American vs European"
+    selected_view = "American vs European"
     # selected_view = st.selectbox(
     #     "Select Analysis Type",
-    #     ["📊 Portfolio Analysis", "📈 American vs European"],
+    #     ["Portfolio Analysis", "American vs European"],
     #     label_visibility="collapsed"
     # )
     
@@ -69,7 +68,7 @@ def main():
     
     # Display selected content
     theoretical_prices_tab(model_params)
-    # if selected_view == "📊 Portfolio Analysis":
+    # if selected_view == "Portfolio Analysis":
     #     pnl_analysis_tab(model_params)
     # else:
     #     theoretical_prices_tab(model_params)

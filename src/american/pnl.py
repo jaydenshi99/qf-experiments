@@ -60,14 +60,14 @@ def pnl_analysis_tab(model_params):
     """Monte Carlo Simulation tab content"""
     
     # Portfolio Construction Section
-    st.markdown("## 📊 Portfolio Construction")
+    st.markdown("## Portfolio Construction")
     
     # Initialize portfolio in session state if not exists
     if 'portfolio' not in st.session_state:
         st.session_state.portfolio = []
     
     # Add new position in a clean layout
-    with st.expander("➕ Add Position", expanded=True):
+    with st.expander("Add Position", expanded=True):
         col1, col2, col3, col4 = st.columns(4)
         
         with col1:
@@ -115,7 +115,7 @@ def pnl_analysis_tab(model_params):
             col1, col2, col3, col4, col5, col6, col7, col8 = st.columns([1, 1, 1.5, 1.5, 1, 1.5, 1, 1])
             
             with col1:
-                if st.button("➖", key=f"decrease_{i}", help="Decrease position"):
+                if st.button("-", key=f"decrease_{i}", help="Decrease position"):
                     if st.session_state.portfolio[i]['position'] > -10:  # Limit to -10
                         st.session_state.portfolio[i]['position'] -= 1
                         st.session_state.portfolio[i]['multiplier'] = 1 if st.session_state.portfolio[i]['position'] > 0 else -1
@@ -140,14 +140,14 @@ def pnl_analysis_tab(model_params):
                     st.markdown(f"<span style='color: {color}'>${total_cost:.2f}</span>", unsafe_allow_html=True)
             
             with col7:
-                if st.button("➕", key=f"increase_{i}", help="Increase position"):
+                if st.button("+", key=f"increase_{i}", help="Increase position"):
                     if st.session_state.portfolio[i]['position'] < 10:  # Limit to +10
                         st.session_state.portfolio[i]['position'] += 1
                         st.session_state.portfolio[i]['multiplier'] = 1 if st.session_state.portfolio[i]['position'] > 0 else -1
                     st.rerun()
             
             with col8:
-                if st.button("🗑️", key=f"delete_{i}", help="Delete position"):
+                if st.button("Delete", key=f"delete_{i}", help="Delete position"):
                     st.session_state.portfolio.pop(i)
                     st.rerun()
         
@@ -169,7 +169,7 @@ def pnl_analysis_tab(model_params):
         st.markdown("---")
     
     # Monte Carlo Analysis Section
-    st.markdown("## 🎲 Monte Carlo Analysis")
+    st.markdown("## Monte Carlo Analysis")
     
     # Extract parameters
     S0 = model_params['S0']
@@ -190,7 +190,7 @@ def pnl_analysis_tab(model_params):
     std_final = np.std(paths[:, -1])
     
     # Visualization
-    st.markdown("### 📊 Stock Price Paths")
+    st.markdown("### Stock Price Paths")
     
     # Create the plot
     fig, ax = plt.subplots(figsize=(10, 6))
@@ -318,5 +318,5 @@ def pnl_analysis_tab(model_params):
             
             st.pyplot(fig_payoff, use_container_width=True)
         else:
-            st.markdown("**📈 Portfolio Payoff Diagram**")
+            st.markdown("**Portfolio Payoff Diagram**")
             st.info("Add positions to your portfolio to see the payoff diagram.")

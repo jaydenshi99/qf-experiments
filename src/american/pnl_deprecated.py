@@ -25,7 +25,7 @@ def pnl_analysis_tab(model_params, show_intermediate):
     try:
         # Trade parameters in sidebar
         with st.sidebar:
-            st.markdown("### 💰 Trade Parameters")
+            st.markdown("### Trade Parameters")
             
             # Position type
             position_type = st.selectbox(
@@ -156,7 +156,7 @@ def pnl_analysis_tab(model_params, show_intermediate):
         col1, col2 = st.columns(2)
         
         with col1:
-            st.subheader("🇪🇺 European Options P&L")
+            st.subheader("European Options P&L")
             coordinates_eu = calculate_node_coordinates(pnl_european_model)
             fig_eu, _ = plot_american_options_tree(
                 pnl_european_model, coordinates_eu,
@@ -170,7 +170,7 @@ def pnl_analysis_tab(model_params, show_intermediate):
             st.pyplot(fig_eu, use_container_width=True)
         
         with col2:
-            st.subheader("🇺🇸 American Options P&L")
+            st.subheader("American Options P&L")
             coordinates_us = calculate_node_coordinates(pnl_american_model)
             fig_us, _ = plot_american_options_tree(
                 pnl_american_model, coordinates_us,
@@ -184,7 +184,7 @@ def pnl_analysis_tab(model_params, show_intermediate):
             st.pyplot(fig_us, use_container_width=True)
         
     except ValueError as e:
-        st.error(f"❌ Parameter Error: {e}")
+        st.error(f"Parameter Error: {e}")
     except Exception as e:
-        st.error(f"❌ Unexpected Error: {e}")
+        st.error(f"Unexpected Error: {e}")
         st.exception(e)

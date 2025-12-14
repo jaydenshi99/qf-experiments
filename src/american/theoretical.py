@@ -77,7 +77,7 @@ def theoretical_prices_tab(model_params):
         col1, col2 = st.columns(2)
         
         with col1:
-            st.subheader("🇪🇺 European Call")
+            st.subheader("European Call")
             coordinates_eu_call = calculate_node_coordinates(eu_call_model)
             fig_eu_call, _ = plot_american_options_tree(
                 eu_call_model, coordinates_eu_call, 
@@ -86,7 +86,7 @@ def theoretical_prices_tab(model_params):
             st.pyplot(fig_eu_call, use_container_width=True)
         
         with col2:
-            st.subheader("🇺🇸 American Call")
+            st.subheader("American Call")
             coordinates_am_call = calculate_node_coordinates(am_call_model)
             fig_am_call, early_exercise_nodes_call = plot_american_options_tree(
                 am_call_model, coordinates_am_call,
@@ -98,7 +98,7 @@ def theoretical_prices_tab(model_params):
         col3, col4 = st.columns(2)
         
         with col3:
-            st.subheader("🇪🇺 European Put")
+            st.subheader("European Put")
             coordinates_eu_put = calculate_node_coordinates(eu_put_model)
             fig_eu_put, _ = plot_american_options_tree(
                 eu_put_model, coordinates_eu_put,
@@ -107,7 +107,7 @@ def theoretical_prices_tab(model_params):
             st.pyplot(fig_eu_put, use_container_width=True)
         
         with col4:
-            st.subheader("🇺🇸 American Put")
+            st.subheader("American Put")
             coordinates_am_put = calculate_node_coordinates(am_put_model)
             fig_am_put, early_exercise_nodes_put = plot_american_options_tree(
                 am_put_model, coordinates_am_put,
@@ -118,7 +118,7 @@ def theoretical_prices_tab(model_params):
         # Early exercise analysis
         all_early_exercise_nodes = early_exercise_nodes_call + early_exercise_nodes_put
         if all_early_exercise_nodes:
-            with st.expander("⚡ Early Exercise Analysis", expanded=False):
+            with st.expander("Early Exercise Analysis", expanded=False):
                 # Show analysis for calls
                 if early_exercise_nodes_call:
                     st.markdown("**American Call Early Exercise:**")
@@ -157,15 +157,15 @@ def theoretical_prices_tab(model_params):
                 else:
                     st.markdown("**American Put:** No early exercise is optimal")
         else:
-            with st.expander("⚡ Early Exercise Analysis", expanded=False):
+            with st.expander("Early Exercise Analysis", expanded=False):
                 st.write("No early exercise is optimal for either calls or puts – American options behave like European options")
         
         # Model details
-        with st.expander("🔍 Model Details"):
+        with st.expander("Model Details"):
             st.json(am_call_model.get_model_info())
         
     except ValueError as e:
-        st.error(f"❌ Parameter Error: {e}")
+        st.error(f"Parameter Error: {e}")
     except Exception as e:
-        st.error(f"❌ Unexpected Error: {e}")
+        st.error(f"Unexpected Error: {e}")
         st.exception(e)
