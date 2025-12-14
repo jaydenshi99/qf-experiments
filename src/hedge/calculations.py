@@ -1,240 +1,150 @@
-"""
-Portfolio Hedging Calculations
-
-Functions for calculating expected profit and risk metrics for bet portfolios.
-"""
-
 import numpy as np
-import re
-from scipy.stats import binom
 
-def parse_condition(condition):
+from .parsers import parse_condition, parse_payoff_function, get_max_time_from_payoff
+from .evaluators import evaluate_payoff_ast, evaluate_condition
+
+def get_ht_from_binary(binary_string):
     """
-    Parse a condition string into its components.
+    Converts a binary string to a list of heads
+    """
+    flips = [int(bit) for bit in binary_string]
+    return np.cumsum(flips)
+    
+
+def get_profit_distribution_analytical(bets, allocations, p):
+    """
+    Calculates the pmf of the profit distribution for a set of given bets and allocations
     
     Args:
-        condition: String like "H_5 >= 3" or "H_10 == 7"
-    
-    Returns:
-        tuple: (t, operator, k) where:
-            - t: number of coin flips
-            - operator: comparison operator ('==', '>=', '<=', '>', '<', '!=')
-            - k: threshold value
-    
-    Example:
-        >>> parse_condition("H_10 >= 6")
-        (10, '>=', 6)
-    """
-    # Match pattern: H_<number> <operator> <number>
-    pattern = r'H_(\d+)\s*(==|>=|<=|>|<|!=)\s*(\d+)'
-    match = re.match(pattern, condition.strip())
-    
-    if not match:
-        raise ValueError(f"Invalid condition format: {condition}")
-    
-    t = int(match.group(1))
-    operator = match.group(2)
-    k = int(match.group(3))
-    
-    return t, operator, k
-
-
-def calculate_win_probability(t, operator, k, p):
-    """
-    Calculate probability that a bet wins using binomial distribution.
-    
-    Args:
-        t: number of coin flips
-        operator: comparison operator
-        k: threshold value
-        p: probability of heads
-    
-    Returns:
-        float: probability that the condition is satisfied
-    """
-    if operator == '==':
-        return binom.pmf(k, t, p)
-    elif operator == '>=':
-        return 1 - binom.cdf(k - 1, t, p)
-    elif operator == '>':
-        return 1 - binom.cdf(k, t, p)
-    elif operator == '<=':
-        return binom.cdf(k, t, p)
-    elif operator == '<':
-        return binom.cdf(k - 1, t, p)
-    elif operator == '!=':
-        return 1 - binom.pmf(k, t, p)
-    else:
-        raise ValueError(f"Unsupported operator: {operator}")
-
-def evaluate_condition(condition, H):
-    """
-    Evaluate a condition given a sequence of cumulative heads.
-    
-    Args:
-        condition: String like "H_5 >= 3"
-        H: numpy array where H[t] = number of heads up to time t (0-indexed)
-    
-    Returns:
-        bool: whether the condition is satisfied
-    """
-    t, operator, k = parse_condition(condition)
-    
-    # Check if we have enough flips
-    if t > len(H):
-        raise ValueError(f"Not enough flips: need {t}, have {len(H)}")
-    
-    # Get number of heads at time t (0-indexed, so t-1)
-    heads_at_t = H[t - 1]
-    
-    # Evaluate the condition
-    if operator == '==':
-        return heads_at_t == k
-    elif operator == '>=':
-        return heads_at_t >= k
-    elif operator == '>':
-        return heads_at_t > k
-    elif operator == '<=':
-        return heads_at_t <= k
-    elif operator == '<':
-        return heads_at_t < k
-    elif operator == '!=':
-        return heads_at_t != k
-    else:
-        return False
-
-def calculate_expected_profit_analytical(bets, allocations, p):
-    """
-    Calculate expected profit analytically using binomial distribution.
-    
-    Args:
-        bets: list of dicts with 'condition' and 'odds' keys
+        bets: list of dicts with either:
+            - {'condition': 'H_2 == 1', 'odds': 2.0}
+            - {'payoff': 'max(H_5 - 3, 0) * 0.5 * I - 0.1 * I'}
         allocations: list of dollar amounts for each bet
         p: probability of heads
-    
-    Returns:
-        dict with:
-            - total_expected_profit: expected profit across all bets
-            - total_invested: total amount invested
-            - expected_return_pct: expected return as percentage
-            - bet_details: list of dicts with per-bet statistics
-    
-    Example:
-        >>> bets = [{'condition': 'H_2 == 1', 'odds': 2.0}]
-        >>> allocations = [100]
-        >>> calculate_expected_profit_analytical(bets, allocations, 0.5)
-        {'total_expected_profit': 0.0, 'total_invested': 100, ...}
     """
-    total_expected = 0
-    total_invested = sum(allocations)
-    bet_details = []
-    
-    for bet, allocation in zip(bets, allocations):
-        try:
-            # Parse the condition
-            t, operator, k = parse_condition(bet['condition'])
-            
-            # Calculate win probability
-            prob_win = calculate_win_probability(t, operator, k, p)
-            
-            # Calculate expected profit for this bet
-            # Win: get back allocation * odds
-            # Lose: lose the allocation
-            win_amount = allocation * bet['odds']
-            lose_amount = -allocation
-            expected_profit = prob_win * win_amount + (1 - prob_win) * lose_amount
-            
-            total_expected += expected_profit
-            
-            bet_details.append({
-                'condition': bet['condition'],
-                'odds': bet['odds'],
-                'allocation': allocation,
-                'prob_win': prob_win,
-                'expected_profit': expected_profit,
-                'expected_return_pct': (expected_profit / allocation * 100) if allocation > 0 else 0
-            })
-            
-        except Exception as e:
-            bet_details.append({
-                'condition': bet['condition'],
-                'odds': bet['odds'],
-                'allocation': allocation,
-                'error': str(e)
-            })
-    
-    return {
-        'total_expected_profit': total_expected,
-        'total_invested': total_invested,
-        'expected_return_pct': (total_expected / total_invested * 100) if total_invested > 0 else 0,
-        'bet_details': bet_details
-    }
 
-
-def calculate_expected_profit_simulation(bets, allocations, p, n_simulations=10000, seed=None):
-    """
-    Calculate expected profit using Monte Carlo simulation.
-    
-    Args:
-        bets: list of dicts with 'condition' and 'odds' keys
-        allocations: list of dollar amounts for each bet
-        p: probability of heads
-        n_simulations: number of simulations to run
-        seed: random seed for reproducibility
-    
-    Returns:
-        numpy array of profits
-    """
-    if seed is not None:
-        np.random.seed(seed)
-    
-    # Find maximum flips needed across all bets
-    max_t = 0
+    # parse bets
+    parsed_bets = []
     for bet in bets:
-        try:
+        if 'payoff' in bet:
+            parsed_bets.append({'payoff': parse_payoff_function(bet['payoff'])})
+        elif 'condition' in bet:
+            parsed_bets.append(bet)
+
+    # find max time
+    n = 0
+    for bet in bets:
+        if 'payoff' in bet:
+            t = get_max_time_from_payoff(bet['payoff'])
+            n = max(n, t)
+        else:
             t, _, _ = parse_condition(bet['condition'])
-            max_t = max(max_t, t)
-        except:
-            pass
-    
-    if max_t == 0:
-        # No valid bets
-        return {
-            'mean_profit': 0,
-            'std_profit': 0,
-            'total_invested': sum(allocations),
-            'probability_of_profit': 0,
-            'profit_distribution': np.array([]),
-            'percentile_5': 0,
-            'percentile_95': 0
-        }
-    
-    # Run simulations
-    profits = []
-    
-    for _ in range(n_simulations):
-        # Simulate coin flips (True = heads, False = tails)
-        flips = np.random.random(max_t) < p
+            n = max(n, t)
+
+    profit_distribution = {}
+
+    for h in range(2**n):
+        # get H_t values
+        binary_string = format(h, f'0{n}b')
+        h_t = get_ht_from_binary(binary_string)
         
-        # Calculate cumulative heads at each time
-        H = np.cumsum(flips)
-        
-        # Calculate profit for this simulation
-        profit = 0
-        for bet, allocation in zip(bets, allocations):
-            try:
-                if evaluate_condition(bet['condition'], H):
-                    # Bet wins: receive allocation * odds
-                    profit += allocation * bet['odds']
+        num_heads = h_t[-1]  # Total heads in this sequence
+        num_tails = n - num_heads
+        sequence_prob = (p ** num_heads) * ((1 - p) ** num_tails)
+
+        # Calculate total profit across all bets
+        total_profit = 0
+        for bet, allocation in zip(parsed_bets, allocations):
+            if 'payoff' in bet:
+                bet_profit = evaluate_payoff_ast(bet['payoff'], h_t, investment=allocation)
+            elif 'condition' in bet:
+                success = evaluate_condition(bet['condition'], h_t)
+                if success:
+                    bet_profit = allocation * bet['odds']
                 else:
-                    # Bet loses: lose the allocation
-                    profit -= allocation
-            except:
-                # If evaluation fails, treat as loss
-                profit -= allocation
+                    bet_profit = -allocation
+            total_profit += bet_profit
         
-        profits.append(profit)
+        # Add to distribution
+        profit_distribution[total_profit] = profit_distribution.get(total_profit, 0) + sequence_prob
+
+    return profit_distribution
+
+def get_profit_distribution_monte_carlo(bets, allocations, p, n_simulations=10000):
+    """
+    Calculates the profit distribution using Monte Carlo simulation
+    """
+    # parse bets
+    parsed_bets = []
+    for bet in bets:
+        if 'payoff' in bet:
+            parsed_bets.append({'payoff': parse_payoff_function(bet['payoff'])})
+        elif 'condition' in bet:
+            parsed_bets.append(bet)
+
+    # find max time
+    n = 0
+    for bet in bets:
+        if 'payoff' in bet:
+            t = get_max_time_from_payoff(bet['payoff'])
+            n = max(n, t)
+        else:
+            t, _, _ = parse_condition(bet['condition'])
+            n = max(n, t)
+
+    profit_distribution = {}
+    for _ in range(n_simulations):
+        flips = np.random.random(n) < p
+        h_t = np.cumsum(flips.astype(int))
+        
+        total_profit = 0
+        for bet, allocation in zip(parsed_bets, allocations):
+            if 'payoff' in bet:
+                bet_profit = evaluate_payoff_ast(bet['payoff'], h_t, investment=allocation)
+            elif 'condition' in bet:
+                success = evaluate_condition(bet['condition'], h_t)
+                if success:
+                    bet_profit = allocation * bet['odds']
+                else:
+                    bet_profit = -allocation
+            total_profit += bet_profit
+
+        # count frequency        
+        profit_distribution[total_profit] = profit_distribution.get(total_profit, 0) + 1
     
-    profits = np.array(profits)
+    # normalise to probabilities
+    total_samples = sum(profit_distribution.values())
+    profit_distribution = {profit: count / total_samples 
+                          for profit, count in profit_distribution.items()}
     
-    return profits
+    return profit_distribution
+
+def get_expected_profit(profit_distribution):
+    """
+    Calculates the expected profit from a profit distribution
+    """
+    return sum(profit * probability for profit, probability in profit_distribution.items())
+
+def get_volatility(profit_distribution, total_invested):
+    """
+    Calculates the volatility (standard deviation of returns) from a profit distribution.
+    """
+    if total_invested == 0:
+        return 0.0
+    
+    # Calculate expected return and expected return squared
+    expected_return = 0.0
+    expected_return_squared = 0.0
+    
+    for profit, prob in profit_distribution.items():
+        return_val = profit / total_invested
+        expected_return += prob * return_val
+        expected_return_squared += prob * (return_val ** 2)
+    
+    # Variance = E[return^2] - E[return]^2
+    variance = expected_return_squared - (expected_return ** 2)
+    
+    # Volatility = std dev of returns (as percentage)
+    volatility = np.sqrt(max(0, variance)) * 100
+    
+    return volatility
