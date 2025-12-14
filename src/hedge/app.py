@@ -22,7 +22,6 @@ from src.hedge.calculations import (
 def main():
     st.set_page_config(
         page_title="Portfolio Hedging",
-        page_icon="🛡️",
         layout="wide"
     )
     
@@ -58,7 +57,7 @@ def main():
     st.markdown("### Bets")
     
     # Add new bet section
-    with st.expander("➕ Add New Bet", expanded=len(st.session_state.bets) == 0):
+    with st.expander("Add New Bet", expanded=len(st.session_state.bets) == 0):
         col1, col2 = st.columns([3, 1])
         
         with col1:
@@ -116,7 +115,7 @@ def main():
                 st.write(f"{bet['odds']:.2f}x")
             
             with col4:
-                if st.button("🗑️", key=f"delete_{i}", help="Delete bet"):
+                if st.button("Delete", key=f"delete_{i}", help="Delete bet"):
                     st.session_state.bets.pop(i)
                     st.rerun()
         
@@ -159,24 +158,30 @@ def main():
                         for j, alloc2 in enumerate(allocations_bet2):
                             if alloc1 + alloc2 <= 1.0:  # Valid allocation
                                 allocations = [alloc1, alloc2]
+                                total_capital = alloc1 + alloc2
                                 
-                                # Analytical expected return
+                                # Analytical expected profit
                                 result = calculate_expected_profit_analytical(
                                     st.session_state.bets,
                                     allocations,
                                     p
                                 )
-                                expected_returns[j, i] = result['total_expected_profit'] * 100
+                                # Store expected profit in dollar amounts (same units as allocations)
+                                expected_returns[j, i] = result['total_expected_profit']
                                 
-                                # Monte Carlo standard deviation
-                                profits = calculate_expected_profit_simulation(
-                                    st.session_state.bets,
-                                    allocations,
-                                    p,
-                                    n_simulations=n_sims,
-                                    seed=42
-                                )
-                                std_devs[j, i] = np.std(profits)
+                                # Monte Carlo standard deviation of returns (volatility)
+                                if total_capital > 0:
+                                    profits = calculate_expected_profit_simulation(
+                                        st.session_state.bets,
+                                        allocations,
+                                        p,
+                                        n_simulations=n_sims,
+                                        seed=42
+                                    )
+                                    returns = profits / total_capital  # Convert profits to returns
+                                    std_devs[j, i] = np.std(returns) * 100  # Store as percentage
+                                else:
+                                    std_devs[j, i] = 0.0
                             else:
                                 expected_returns[j, i] = np.nan  # Invalid allocation
                                 std_devs[j, i] = np.nan
@@ -184,7 +189,7 @@ def main():
                 # Create side-by-side heatmaps
                 fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(20, 8))
                 
-                # LEFT HEATMAP: Expected Return
+                # LEFT HEATMAP: Expected Profit
                 masked_returns = np.ma.masked_invalid(expected_returns)
                 max_abs = max(abs(np.nanmin(expected_returns)), abs(np.nanmax(expected_returns)))
                 
@@ -193,7 +198,7 @@ def main():
                                 vmin=-max_abs, vmax=max_abs)
                 
                 cbar1 = plt.colorbar(im1, ax=ax1)
-                cbar1.set_label('Expected Return (%)', rotation=270, labelpad=20, fontsize=11)
+                cbar1.set_label('Expected Profit ($)', rotation=270, labelpad=20, fontsize=11)
                 
                 constraint_x = np.linspace(0, 100, 100)
                 constraint_y = 100 - constraint_x
@@ -205,13 +210,13 @@ def main():
                     max_i, max_j = np.unravel_index(max_idx, expected_returns.shape)
                     optimal_alloc1_pct = allocations_bet1[max_j] * 100
                     optimal_alloc2_pct = allocations_bet2[max_i] * 100
-                    optimal_return = expected_returns[max_i, max_j]
+                    optimal_profit = expected_returns[max_i, max_j]
                     
                     ax1.plot(optimal_alloc1_pct, optimal_alloc2_pct, 'r*', markersize=15)
                 
                 ax1.set_xlabel(f'Bet 1: {st.session_state.bets[0]["condition"]} (%)', fontsize=11, fontweight='bold')
                 ax1.set_ylabel(f'Bet 2: {st.session_state.bets[1]["condition"]} (%)', fontsize=11, fontweight='bold')
-                ax1.set_title('Expected Return (%)', fontsize=13, fontweight='bold')
+                ax1.set_title('Expected Profit ($)', fontsize=13, fontweight='bold')
                 ax1.grid(True, alpha=0.3, linestyle='--')
                 ax1.set_xlim(0, 100)
                 ax1.set_ylim(0, 100)
@@ -225,7 +230,7 @@ def main():
                                 vmin=np.nanmin(std_devs), vmax=np.nanmax(std_devs))
                 
                 cbar2 = plt.colorbar(im2, ax=ax2)
-                cbar2.set_label('Standard Deviation ($)', rotation=270, labelpad=20, fontsize=11)
+                cbar2.set_label('Volatility (Std Dev of Returns, %)', rotation=270, labelpad=20, fontsize=11)
                 
                 ax2.plot(constraint_x, constraint_y, 'b--', linewidth=2, alpha=0.7)
                 
@@ -237,11 +242,8 @@ def main():
                         for j in range(len(allocations_bet2)):
                             total_allocations[j, i] = allocations_bet1[i] + allocations_bet2[j]
                     
-                    # Calculate risk per dollar (std dev / capital)
-                    std_per_dollar = std_devs / (total_allocations + 1e-10)
-                    
-                    # For each total allocation level, find the minimum risk per dollar
-                    # Group by total allocation and find minimum risk/dollar allocation
+                    # std_devs now contains volatility (std dev of returns) as percentages
+                    # For minimum risk frontier, we want minimum volatility for each capital level
                     min_std_points = []
                     
                     # Consider total allocations from 0 to 100% in steps
@@ -253,9 +255,9 @@ def main():
                         matching_mask = matching_mask & ~np.isnan(std_devs) & (total_allocations > 0)
                         
                         if np.any(matching_mask):
-                            # Find minimum risk per dollar among these allocations
-                            min_risk_idx = np.nanargmin(np.where(matching_mask, std_per_dollar, np.inf))
-                            min_risk_i, min_risk_j = np.unravel_index(min_risk_idx, std_per_dollar.shape)
+                            # Find minimum volatility among these allocations
+                            min_risk_idx = np.nanargmin(np.where(matching_mask, std_devs, np.inf))
+                            min_risk_i, min_risk_j = np.unravel_index(min_risk_idx, std_devs.shape)
                             
                             alloc1_pct = allocations_bet1[min_risk_j] * 100
                             alloc2_pct = allocations_bet2[min_risk_i] * 100
@@ -295,14 +297,13 @@ def main():
                             # Single point
                             ax2.plot(min_std_points[0][0], min_std_points[0][1], 'b*', markersize=15)
                     
-                    # Find minimum std dev per dollar (already calculated above)
-                    # Exclude zero allocations for the metric
+                    # Find minimum volatility across all non-zero allocations
                     non_zero_mask = total_allocations > 0
-                    min_std_per_dollar = np.nanmin(std_per_dollar[non_zero_mask])
+                    min_volatility = np.nanmin(std_devs[non_zero_mask])
                 
                 ax2.set_xlabel(f'Bet 1: {st.session_state.bets[0]["condition"]} (%)', fontsize=11, fontweight='bold')
                 ax2.set_ylabel(f'Bet 2: {st.session_state.bets[1]["condition"]} (%)', fontsize=11, fontweight='bold')
-                ax2.set_title(f'Standard Deviation (Risk) - {n_sims:,} simulations', fontsize=13, fontweight='bold')
+                ax2.set_title(f'Volatility (Std Dev of Returns) - {n_sims:,} simulations', fontsize=13, fontweight='bold')
                 ax2.legend(loc='upper right', fontsize=9)
                 ax2.grid(True, alpha=0.3, linestyle='--')
                 ax2.set_xlim(0, 100)
@@ -319,14 +320,14 @@ def main():
                     col1, col2 = st.columns(2)
                     
                     with col1:
-                        st.markdown("**Best Expected Return:**")
+                        st.markdown("**Best Expected Profit:**")
                         subcol1, subcol2, subcol3 = st.columns(3)
                         with subcol1:
                             st.metric("Bet 1", f"{optimal_alloc1_pct:.1f}%")
                         with subcol2:
                             st.metric("Bet 2", f"{optimal_alloc2_pct:.1f}%")
                         with subcol3:
-                            st.metric("Return", f"{optimal_return:.2f}%")
+                            st.metric("Expected Profit", f"${optimal_profit:.2f}")
                     
                     with col2:
                         st.markdown("**Minimum Risk Hedge:**")
@@ -337,8 +338,8 @@ def main():
                             else:
                                 st.info("Not enough points to fit line")
                         with subcol2:
-                            st.metric("Min Risk/$", f"${min_std_per_dollar:.4f}",
-                                     help="Minimum standard deviation per dollar invested - risk per unit capital")
+                            st.metric("Min Volatility", f"{min_volatility:.2f}%",
+                                     help="Minimum volatility (standard deviation of returns) across all allocations")
                 
             except Exception as e:
                 st.error(f"Error generating heatmap: {str(e)}")
@@ -414,12 +415,12 @@ def main():
                     )
                     
                     # Display results side by side
-                    st.markdown("#### 📊 Results Comparison")
+                    st.markdown("#### Results Comparison")
                     
                     col1, col2 = st.columns(2)
                     
                     with col1:
-                        st.markdown("##### 🎯 Analytical (Exact)")
+                        st.markdown("##### Analytical (Exact)")
                         st.metric(
                             "Expected Profit",
                             f"${analytical_result['total_expected_profit']:.2f}"
@@ -434,7 +435,7 @@ def main():
                         )
                     
                     with col2:
-                        st.markdown("##### 🎲 Monte Carlo Simulation")
+                        st.markdown("##### Monte Carlo Simulation")
                         mean_profit = np.mean(simulated_profits)
                         std_profit = np.std(simulated_profits)
                         variance_profit = np.var(simulated_profits)
@@ -457,7 +458,7 @@ def main():
                         )
                     
                     # Accuracy comparison
-                    st.markdown("#### 🎯 Accuracy Check")
+                    st.markdown("#### Accuracy Check")
                     difference = abs(analytical_result['total_expected_profit'] - mean_profit)
                     relative_error = (difference / abs(analytical_result['total_expected_profit']) * 100) if analytical_result['total_expected_profit'] != 0 else 0
                     
@@ -468,14 +469,14 @@ def main():
                         st.metric("Relative Error", f"{relative_error:.3f}%")
                     with col3:
                         if relative_error < 1:
-                            st.success("✅ Excellent agreement!")
+                            st.success("Excellent agreement!")
                         elif relative_error < 5:
-                            st.info("✓ Good agreement")
+                            st.info("Good agreement")
                         else:
-                            st.warning("⚠ Consider more simulations")
+                            st.warning("Consider more simulations")
                     
                     # Per-bet breakdown
-                    st.markdown("#### 📋 Per-Bet Breakdown (Analytical)")
+                    st.markdown("#### Per-Bet Breakdown (Analytical)")
                     for i, detail in enumerate(analytical_result['bet_details']):
                         if 'error' not in detail:
                             with st.expander(f"Bet {i+1}: {detail['condition']}"):
@@ -490,7 +491,7 @@ def main():
                                     st.metric("Expected Return", f"{detail['expected_return_pct']:.2f}%")
                     
                     # Distribution plot
-                    st.markdown("#### 📈 Profit Distribution (Simulation)")
+                    st.markdown("#### Profit Distribution (Simulation)")
                     fig, ax = plt.subplots(figsize=(10, 5))
                     
                     ax.hist(simulated_profits, bins=50, alpha=0.7, color='steelblue', edgecolor='black')
