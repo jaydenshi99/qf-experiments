@@ -9,9 +9,9 @@ __version__ = "0.1.0"
 __author__ = "Your Name"
 __email__ = "your.email@example.com"
 
-from .binomial_model import BinomialModel
-from .node import BinomialNode
-from .tree import BinomialTree
+from .american.binomial_model import BinomialModel
+from .american.node import BinomialNode
+from .american.tree import BinomialTree
 
 # Import other modules when they are created
 # from .visualization import BinomialTreeVisualizer

@@ -14,10 +14,7 @@ import os
 # Add the current directory to Python path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-try:
-    from src.binomial_model import BinomialModel
-except ImportError:
-    from binomial_model import BinomialModel
+from .binomial_model import BinomialModel
 
 # Set matplotlib to use a non-interactive backend
 plt.switch_backend('Agg')

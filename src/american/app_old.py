@@ -10,7 +10,7 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 try:
-    from binomial_model import BinomialModel
+    from .binomial_model import BinomialModel
     
     st.title("Binomial Options Pricing Model")
     st.write("Backend is working! Model can be imported successfully.")
