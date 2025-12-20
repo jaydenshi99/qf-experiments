@@ -6,14 +6,13 @@ import streamlit as st
 import numpy as np
 import matplotlib.pyplot as plt
 from src.hedge.calculations import (
-    get_profit_distribution_analytical,
-    get_profit_distribution_monte_carlo,
-    get_expected_profit,
-    get_volatility
+    get_bet_statistics_per_dollar,
+    calculate_portfolio_stats,
+    get_max_time_from_bets
 )
 
 
-def generate_heatmap(bets, p, step_size=0.02, n_sims=1000):
+def generate_heatmap(bets, p, step_size=0.02, n_sims=3000):
     """
     Generate allocation heatmaps for two bets.
     
@@ -34,33 +33,33 @@ def generate_heatmap(bets, p, step_size=0.02, n_sims=1000):
     expected_returns = np.zeros((len(allocations_bet2), len(allocations_bet1)))
     std_devs = np.zeros((len(allocations_bet2), len(allocations_bet1)))
     
-    # Calculate expected return and std dev for each allocation
-    with st.spinner('Calculating heatmaps...'):
+    # Calculate statistics per dollar (only need to do this once!)
+    with st.spinner('Calculating bet statistics...'):
+        stats_per_dollar = get_bet_statistics_per_dollar(bets, p, n_simulations=n_sims)
+    
+    # Calculate expected return and std dev for each allocation (now just scaling!)
+    with st.spinner('Generating heatmaps...'):
         for i, alloc1 in enumerate(allocations_bet1):
             for j, alloc2 in enumerate(allocations_bet2):
                 if alloc1 + alloc2 <= 1.0:  # Valid allocation
                     allocations = [alloc1, alloc2]
-                    total_capital = alloc1 + alloc2
                     
-                    # Calculate expected profit and volatility
-                    if total_capital > 0:
-                        # Use Monte Carlo for both (faster for complex payoff functions)
-                        profit_dist = get_profit_distribution_analytical(
-                            bets,
-                            allocations,
-                            p
-                        )
-                        # Expected profit from distribution
-                        expected_returns[j, i] = get_expected_profit(profit_dist)
-                        
-                        # Volatility (std dev of returns)
-                        std_devs[j, i] = get_volatility(profit_dist, total_capital)
+                    # Calculate expected profit and volatility using scaling
+                    if alloc1 + alloc2 > 0:
+                        expected_profit, volatility = calculate_portfolio_stats(allocations, stats_per_dollar)
+                        expected_returns[j, i] = expected_profit
+                        std_devs[j, i] = volatility
                     else:
                         expected_returns[j, i] = 0.0
                         std_devs[j, i] = 0.0
                 else:
                     expected_returns[j, i] = np.nan  # Invalid allocation
                     std_devs[j, i] = np.nan
+    
+    # Check if Monte Carlo is being used
+    max_time = get_max_time_from_bets(bets)
+    analytical_threshold = 18  # Match the default in get_profit_distribution
+    using_mc = max_time > analytical_threshold
     
     # Create side-by-side heatmaps
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(20, 8))
@@ -106,6 +105,12 @@ def generate_heatmap(bets, p, step_size=0.02, n_sims=1000):
     ax1.grid(True, alpha=0.3, linestyle='--')
     ax1.set_xlim(0, 100)
     ax1.set_ylim(0, 100)
+    
+    # Add note if using Monte Carlo
+    if using_mc:
+        ax1.text(0.02, 0.98, 'Note: Monte Carlo simulation used\ndue to large number of outcomes', 
+                transform=ax1.transAxes, fontsize=9, verticalalignment='top',
+                bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.8))
     
     # RIGHT HEATMAP: Standard Deviation
     masked_stddev = np.ma.masked_invalid(std_devs)
@@ -199,6 +204,12 @@ def generate_heatmap(bets, p, step_size=0.02, n_sims=1000):
     ax2.grid(True, alpha=0.3, linestyle='--')
     ax2.set_xlim(0, 100)
     ax2.set_ylim(0, 100)
+    
+    # Add note if using Monte Carlo
+    if using_mc:
+        ax2.text(0.02, 0.98, 'Note: Monte Carlo simulation used\ndue to large number of outcomes', 
+                transform=ax2.transAxes, fontsize=9, verticalalignment='top',
+                bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.8))
     
     plt.tight_layout()
     

@@ -9,18 +9,40 @@ def get_ht_from_binary(binary_string):
     """
     flips = [int(bit) for bit in binary_string]
     return np.cumsum(flips)
+
+
+def get_max_time_from_bets(bets):
+    """
+    Find the maximum time step from all bets.
     
+    Args:
+        bets: list of bet dictionaries
+        
+    Returns:
+        int: maximum time step n
+    """
+    n = 0
+    for bet in bets:
+        if 'payoff' in bet:
+            t = get_max_time_from_payoff(bet['payoff'])
+            n = max(n, t)
+        else:
+            t, _, _ = parse_condition(bet['condition'])
+            n = max(n, t)
+    return n
+
+
+def _get_max_time_from_bets(bets):
+    """Internal alias for backward compatibility."""
+    return get_max_time_from_bets(bets)
+
 
 def get_profit_distribution_analytical(bets, allocations, p):
     """
-    Calculates the pmf of the profit distribution for a set of given bets and allocations
+    Calculates the pmf of the profit distribution for a set of given bets and allocations.
     
-    Args:
-        bets: list of dicts with either:
-            - {'condition': 'H_2 == 1', 'odds': 2.0}
-            - {'payoff': 'max(H_5 - 3, 0) * 0.5 * I - 0.1 * I'}
-        allocations: list of dollar amounts for each bet
-        p: probability of heads
+    This method enumerates all 2^n possible sequences, giving exact results but with
+    exponential time complexity O(2^n). Use this when n (max time) is small.
     """
 
     # parse bets
@@ -32,14 +54,7 @@ def get_profit_distribution_analytical(bets, allocations, p):
             parsed_bets.append(bet)
 
     # find max time
-    n = 0
-    for bet in bets:
-        if 'payoff' in bet:
-            t = get_max_time_from_payoff(bet['payoff'])
-            n = max(n, t)
-        else:
-            t, _, _ = parse_condition(bet['condition'])
-            n = max(n, t)
+    n = _get_max_time_from_bets(bets)
 
     profit_distribution = {}
 
@@ -70,7 +85,7 @@ def get_profit_distribution_analytical(bets, allocations, p):
 
     return profit_distribution
 
-def get_profit_distribution_monte_carlo(bets, allocations, p, n_simulations=10000):
+def get_profit_distribution_monte_carlo(bets, allocations, p, n_simulations=3000):
     """
     Calculates the profit distribution using Monte Carlo simulation
     """
@@ -83,14 +98,7 @@ def get_profit_distribution_monte_carlo(bets, allocations, p, n_simulations=1000
             parsed_bets.append(bet)
 
     # find max time
-    n = 0
-    for bet in bets:
-        if 'payoff' in bet:
-            t = get_max_time_from_payoff(bet['payoff'])
-            n = max(n, t)
-        else:
-            t, _, _ = parse_condition(bet['condition'])
-            n = max(n, t)
+    n = _get_max_time_from_bets(bets)
 
     profit_distribution = {}
     for _ in range(n_simulations):
@@ -148,3 +156,107 @@ def get_volatility(profit_distribution, total_invested):
     volatility = np.sqrt(max(0, variance)) * 100
     
     return volatility
+
+
+def get_profit_distribution(bets, allocations, p, n_simulations=5000, analytical_threshold=18):
+    """
+    Automatically chooses between analytical and Monte Carlo methods based on time.
+    """
+    n = _get_max_time_from_bets(bets)
+    
+    if n <= analytical_threshold:
+        return get_profit_distribution_analytical(bets, allocations, p)
+    else:
+        return get_profit_distribution_monte_carlo(bets, allocations, p, n_simulations)
+
+
+def get_bet_statistics_per_dollar(bets, p, n_simulations=5000, analytical_threshold=18):
+    """
+    Calculate expected profit, variance, and covariance per dollar for bets.
+    Only needs to calculate: E1, E2, Var1, Var2, Cov12 - then everything else is analytical.
+    """
+    n_bets = len(bets)
+    expected_profit_per_dollar = []
+    variance_per_dollar = []
+    
+    # Calculate E_i and Var_i for each bet individually (with $1)
+    for i in range(n_bets):
+        allocations = [0.0] * n_bets
+        allocations[i] = 1.0
+        
+        dist = get_profit_distribution(bets, allocations, p, n_simulations, analytical_threshold)
+        expected_profit = get_expected_profit(dist)
+        expected_profit_per_dollar.append(expected_profit)
+        
+        # Variance of return per dollar
+        expected_return = expected_profit / 1.0
+        variance = sum(prob * ((profit / 1.0) - expected_return) ** 2 
+                      for profit, prob in dist.items())
+        variance_per_dollar.append(variance)
+    
+    # Calculate covariance matrix
+    covariance_matrix = np.zeros((n_bets, n_bets))
+    
+    # Diagonal is variance
+    for i in range(n_bets):
+        covariance_matrix[i, i] = variance_per_dollar[i]
+    
+    # Off-diagonal
+    # When both bets have $1 each, return per dollar = (R_i + R_j) / 2
+    # Var((R_i + R_j)/2) = (1/4) * Var(R_i + R_j)
+    # Var(R_i + R_j) = Var(R_i) + Var(R_j) + 2*Cov(R_i, R_j)
+    # Var((R_i + R_j)/2) = (1/4) * [Var(R_i) + Var(R_j) + 2*Cov(R_i, R_j)]
+    # 4*Var((R_i + R_j)/2) = Var(R_i) + Var(R_j) + 2*Cov(R_i, R_j)
+    # Cov(R_i, R_j) = (4*Var((R_i+R_j)/2) - Var(R_i) - Var(R_j)) / 2
+    for i in range(n_bets):
+        for j in range(i + 1, n_bets):
+            # Calculate both bets with $1 each to get Var((R_i + R_j)/2)
+            allocations = [0.0] * n_bets
+            allocations[i] = 1.0
+            allocations[j] = 1.0
+            
+            dist_both = get_profit_distribution(bets, allocations, p, n_simulations, analytical_threshold)
+            expected_profit_both = get_expected_profit(dist_both)
+            expected_return_both = expected_profit_both / 2.0
+            
+            # Var((R_i + R_j)/2)
+            variance_both = sum(prob * ((profit / 2.0) - expected_return_both) ** 2 
+                              for profit, prob in dist_both.items())
+            
+            # Cov(R_i, R_j) = (4*Var((R_i+R_j)/2) - Var(R_i) - Var(R_j)) / 2
+            covariance = (4.0 * variance_both - variance_per_dollar[i] - variance_per_dollar[j]) / 2.0
+            
+            covariance_matrix[i, j] = covariance
+            covariance_matrix[j, i] = covariance
+    
+    return {
+        'expected_profit_per_dollar': expected_profit_per_dollar,
+        'variance_per_dollar': variance_per_dollar,
+        'covariance_matrix': covariance_matrix
+    }
+
+
+def calculate_portfolio_stats(allocations, stats_per_dollar):
+    """
+    Analytically calculate portfolio stats from per-dollar statistics.
+    For allocations [A1, A2] with stats E1, E2, Var1, Var2, Cov12:
+    - Expected profit = A1*E1 + A2*E2
+    - Variance of returns = (A1^2*Var1 + A2^2*Var2 + 2*A1*A2*Cov12) / (A1+A2)^2
+    - Volatility = sqrt(Variance) * 100%
+    """
+    allocations = np.array(allocations)
+    E = np.array(stats_per_dollar['expected_profit_per_dollar'])
+    Cov = stats_per_dollar['covariance_matrix']
+    
+    total = np.sum(allocations)
+    if total == 0:
+        return 0.0, 0.0
+    
+    # Expected profit
+    expected_profit = np.dot(allocations, E)
+    
+    # Variance of returns
+    variance_of_returns = np.dot(allocations, np.dot(Cov, allocations)) / (total ** 2)
+    volatility_percent = np.sqrt(max(0, variance_of_returns)) * 100
+    
+    return expected_profit, volatility_percent
