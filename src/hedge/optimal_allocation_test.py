@@ -25,32 +25,19 @@ def render_optimal_allocation_test(bets, p):
         return
     
     st.markdown("""
-    Test the `get_optimal_allocation` function to find the optimal portfolio allocation
-    for a given target expected return per dollar.
+    Find the optimal portfolio allocation from a given target return.
     """)
     
-    # Input for target return
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        target_return = st.number_input(
-            "Target Expected Return per Dollar",
-            min_value=None,
-            max_value=None,
-            value=0.1,
-            step=0.01,
-            format="%.4f",
-            help="Target expected return per dollar invested"
-        )
-    
-    with col2:
-        total_capital = st.number_input(
-            "Total Capital ($)",
-            min_value=0.01,
-            value=1.0,
-            step=0.1,
-            help="Total amount to allocate"
-        )
+    # Input for target return (percentage of capital)
+    target_return_percent = st.number_input(
+        "Target Expected Return (%)",
+        min_value=None,
+        max_value=None,
+        value=10.0,
+        step=0.5,
+        format="%.2f",
+        help="Target expected return as a percentage of capital (e.g. 10 for 10%)."
+    )
     
     # ------------------------------------------------------------
     # Calculate statistics once (no caching to keep logic simple)
@@ -65,6 +52,9 @@ def render_optimal_allocation_test(bets, p):
         st.error(f"Error calculating bet statistics: {str(e)}")
         st.exception(e)
         return
+
+    # Convert target return from % to per-dollar for optimisation formulas
+    target_return = target_return_percent / 100.0
 
     # ------------------------------------------------------------
     # Optimal allocation for the chosen target return
@@ -84,35 +74,36 @@ def render_optimal_allocation_test(bets, p):
         st.markdown("#### Optimal Allocation Results")
 
         with st.expander("Bet Statistics (per dollar)"):
-            st.write("**Expected Profits:**")
+            st.write("**Expected Returns:**")
             for i, exp_prof in enumerate(stats_per_dollar['expected_profit_per_dollar']):
-                st.write(f"  Bet {i+1}: ${exp_prof:.6f}")
+                ret_pct = exp_prof * 100.0
+                st.write(f"  Bet {i+1}: {ret_pct:.4f}%")
 
             st.write("\n**Covariance Matrix:**")
             st.write(stats_per_dollar['covariance_matrix'])
 
-        st.markdown("**Optimal Allocation:**")
-        alloc_scaled = (optimal_alloc.flatten() * total_capital)
+        st.markdown("**Optimal Allocation (percent of capital):**")
+        weights = optimal_alloc.flatten()
 
         cols = st.columns(len(bets))
-        for i, (col, alloc) in enumerate(zip(cols, alloc_scaled)):
+        for i, (col, w) in enumerate(zip(cols, weights)):
             with col:
                 st.metric(
                     f"Bet {i+1}",
-                    f"${alloc:.2f}",
-                    f"{alloc/total_capital*100:.2f}%"
+                    f"{w*100:.2f}%",
+                    None
                 )
 
-        total_alloc = np.sum(alloc_scaled)
-        st.write(f"**Total Allocated:** ${total_alloc:.2f}")
+        total_weight = np.sum(weights)
+        st.write(f"**Total Allocation:** {total_weight*100:.2f}%")
 
-        expected_return = np.dot(optimal_alloc.flatten(), stats_per_dollar['expected_profit_per_dollar'])
-        st.write(f"**Expected Return per Dollar:** {expected_return:.10f}")
-        st.write(f"**Target Return per Dollar:** {target_return:.10f}")
-        st.write(f"**Difference:** {abs(expected_return - target_return):.10f}")
+        # Expected return and volatility in percentage terms
+        expected_return_per_dollar, portfolio_vol = calculate_portfolio_stats(weights, stats_per_dollar)
+        expected_return_pct = expected_return_per_dollar * 100.0
+        st.write(f"**Expected Return:** {expected_return_pct:.2f}%")
+        st.write(f"**Target Return:** {target_return_percent:.2f}%")
+        st.write(f"**Difference:** {abs(expected_return_pct - target_return_percent):.2f}%")
 
-        portfolio_exp_prof, portfolio_vol = calculate_portfolio_stats(alloc_scaled, stats_per_dollar)
-        st.write(f"**Portfolio Expected Profit:** ${portfolio_exp_prof:.6f}")
         st.write(f"**Portfolio Volatility:** {portfolio_vol:.4f}%")
 
     # ------------------------------------------------------------
@@ -144,9 +135,9 @@ def render_optimal_allocation_test(bets, p):
             except ValueError:
                 continue  # skip problematic targets
 
-            allocs = (w.flatten() * total_capital)
-            exp_prof, vol = calculate_portfolio_stats(allocs, stats_per_dollar)
-            frontier_returns.append(exp_prof)
+            # Use weights directly (sum to 1) so expected profit is per-dollar return
+            exp_prof, vol = calculate_portfolio_stats(w.flatten(), stats_per_dollar)
+            frontier_returns.append(exp_prof * 100.0)  # convert to %
             frontier_vols.append(vol)
     except ValueError as e:
         st.error(str(e).replace("\n", "  \n"))
@@ -163,7 +154,7 @@ def render_optimal_allocation_test(bets, p):
 
         fig, ax = plt.subplots(figsize=(8, 5))
         ax.plot(xs, ys, "b-", linewidth=2)
-        ax.set_xlabel("Expected Profit ($)")
+        ax.set_xlabel("Expected Return (%)")
         ax.set_ylabel("Volatility (%)")
         ax.set_title("Efficient Frontier")
         ax.grid(True, alpha=0.3)
