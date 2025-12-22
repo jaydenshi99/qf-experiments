@@ -11,7 +11,7 @@ def render_add_bet_section():
     st.markdown("### Bets")
     
     # Add new bet section
-    with st.expander("Add New Bet", expanded=len(st.session_state.bets) == 0):
+    with st.expander("Add New Bet", expanded=True):
         bet_type = st.radio(
             "Bet Type",
             ["Preset", " Custom"],

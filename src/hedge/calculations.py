@@ -260,3 +260,47 @@ def calculate_portfolio_stats(allocations, stats_per_dollar):
     volatility_percent = np.sqrt(max(0, variance_of_returns)) * 100
     
     return expected_profit, volatility_percent
+
+
+def get_optimal_allocation(bets, p, target_return, n_simulations=5000, analytical_threshold=18):
+    """
+    Calculate optimal allocation for a portfolio of bets given a target return per dollar.
+    
+    Uses the analytical solution for mean-variance portfolio optimization.
+
+        
+    Returns:
+        numpy array: Optimal allocation vector (sums to 1)
+    """
+    # Get statistics per dollar
+    stats_per_dollar = get_bet_statistics_per_dollar(bets, p, n_simulations, analytical_threshold)
+    
+    # Extract covariance matrix and expected returns
+    sigma = np.array(stats_per_dollar['covariance_matrix'])
+    mu = np.array(stats_per_dollar['expected_profit_per_dollar']).reshape(-1, 1)
+    
+    # Create vector of ones
+    ones = np.ones(len(mu)).reshape(-1, 1)
+    
+    # Calculate inverse
+    sigma_inv = np.linalg.inv(sigma)
+    
+    # Calculate A, B, C
+    A = (ones.T @ sigma_inv @ ones).item()
+    B = (ones.T @ sigma_inv @ mu).item()
+    C = (mu.T @ sigma_inv @ mu).item()
+    
+    # Calculate D
+    D = A * C - B**2
+    
+    if abs(D) < 1e-10:
+        raise ValueError("Covariance matrix is singular or constraints are incompatible")
+    
+    # Calculate alpha and beta
+    alpha = (C - B * target_return) / D
+    beta = (A * target_return - B) / D
+    
+    # Calculate optimal allocation
+    optimal_allocation = alpha * (sigma_inv @ ones) + beta * (sigma_inv @ mu)
+    
+    return optimal_allocation

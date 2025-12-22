@@ -15,6 +15,7 @@ from src.hedge.ui import render_sidebar, render_intro
 from src.hedge.bet_management import render_add_bet_section, render_bets_display
 from src.hedge.heatmap import render_heatmap_section
 from src.hedge.performance_testing import render_performance_testing_section
+from src.hedge.optimal_allocation_test import render_optimal_allocation_test
 
 
 def main():
@@ -41,6 +42,9 @@ def main():
     
     # Heatmap section
     render_heatmap_section(st.session_state.bets, p)
+    
+    # Optimal allocation test section
+    render_optimal_allocation_test(st.session_state.bets, p)
     
     # Performance testing section
     render_performance_testing_section(st.session_state.bets, p)
