@@ -106,13 +106,10 @@ def render_optimal_allocation_test(bets, p):
 
         st.write(f"**Portfolio Volatility:** {portfolio_vol:.4f}%")
 
-    # ------------------------------------------------------------
-    # Efficient frontier (always rendered as its own section)
-    # ------------------------------------------------------------
     st.markdown("---")
     st.markdown("### Efficient Frontier")
     st.caption(
-        "Minimum achievable volatility for each expected profit level, "
+        "Efficient Frontier:Minimum achievable volatility for each target expected profit level, "
         "based on the current bets and probability."
     )
 
@@ -127,6 +124,7 @@ def render_optimal_allocation_test(bets, p):
     returns_range = np.linspace(min_ret, max_ret, 50)
     frontier_returns = []
     frontier_vols = []
+    frontier_sharpes = []
 
     try:
         for r in returns_range:
@@ -137,8 +135,13 @@ def render_optimal_allocation_test(bets, p):
 
             # Use weights directly (sum to 1) so expected profit is per-dollar return
             exp_prof, vol = calculate_portfolio_stats(w.flatten(), stats_per_dollar)
-            frontier_returns.append(exp_prof * 100.0)  # convert to %
+            ret_pct = exp_prof * 100.0  # convert to %
+            frontier_returns.append(ret_pct)
             frontier_vols.append(vol)
+
+            # Sharpe ratio with risk‑free rate = 0 (return / volatility, both in %)
+            sharpe = ret_pct / vol if vol > 0 else None
+            frontier_sharpes.append(sharpe)
     except ValueError as e:
         st.error(str(e).replace("\n", "  \n"))
         return
@@ -148,16 +151,37 @@ def render_optimal_allocation_test(bets, p):
         return
 
     if frontier_returns:
-        paired = sorted(zip(frontier_returns, frontier_vols), key=lambda x: x[0])
+        paired = sorted(zip(frontier_returns, frontier_vols, frontier_sharpes), key=lambda x: x[0])
         xs = [p[0] for p in paired]
         ys = [p[1] for p in paired]
+        zs = [p[2] for p in paired]
 
-        fig, ax = plt.subplots(figsize=(8, 5))
-        ax.plot(xs, ys, "b-", linewidth=2)
-        ax.set_xlabel("Expected Return (%)")
-        ax.set_ylabel("Volatility (%)")
-        ax.set_title("Efficient Frontier")
-        ax.grid(True, alpha=0.3)
+        fig, ax1 = plt.subplots(figsize=(8, 5))
+
+        # Left y-axis: volatility
+        vol_line, = ax1.plot(xs, ys, "b-", linewidth=2, label="Volatility")
+        ax1.set_xlabel("Expected Return (%)")
+        ax1.set_ylabel("Volatility (%)")
+        ax1.grid(True, alpha=0.3)
+
+        # Right y-axis: Sharpe ratio (only where defined)
+        sharpe_points = [(x, z) for x, z in zip(xs, zs) if z is not None]
+        sharpe_line = None
+        if sharpe_points:
+            sx, sz = zip(*sharpe_points)
+            ax2 = ax1.twinx()
+            sharpe_line, = ax2.plot(sx, sz, "g--", linewidth=2, label="Sharpe Ratio")
+            ax2.set_ylabel("Sharpe Ratio")
+
+        # Combined legend
+        lines = [vol_line]
+        labels = ["Volatility"]
+        if sharpe_line is not None:
+            lines.append(sharpe_line)
+            labels.append("Sharpe Ratio")
+        ax1.legend(lines, labels, loc="upper left")
+
+        ax1.set_title("Efficient Frontier (Volatility & Sharpe)")
         plt.tight_layout()
         st.pyplot(fig)
     else:

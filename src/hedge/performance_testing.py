@@ -21,8 +21,7 @@ def render_performance_testing_section(bets, p):
     
     if bets:
         st.markdown("""
-        Allocate money to your bets and compare the analytical calculation 
-        (exact using binomial distribution) vs Monte Carlo simulation.
+        Allocate money to your bets and compare the analytical calculation vs Monte Carlo simulation.
         """)
         
         # Allocation inputs
