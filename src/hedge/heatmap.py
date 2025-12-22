@@ -228,44 +228,43 @@ def render_heatmap_section(bets, p):
         Calculated with total capital = $1.
         """)
         
-        if st.button("Generate Heatmap", type="primary"):
-            try:
-                fig, optimal_info, min_volatility, hedge_slope = generate_heatmap(bets, p)
-                
-                st.pyplot(fig)
-                
-                # Display optimal allocations
-                if optimal_info:
-                    st.markdown("#### Optimal Allocations")
-                    
-                    col1, col2 = st.columns(2)
-                    
-                    with col1:
-                        st.markdown("**Best Expected Profit:**")
-                        subcol1, subcol2, subcol3 = st.columns(3)
-                        with subcol1:
-                            st.metric("Bet 1", f"{optimal_info['alloc1_pct']:.1f}%")
-                        with subcol2:
-                            st.metric("Bet 2", f"{optimal_info['alloc2_pct']:.1f}%")
-                        with subcol3:
-                            st.metric("Expected Profit", f"${optimal_info['profit']:.2f}")
-                    
-                    with col2:
-                        st.markdown("**Minimum Risk Hedge:**")
-                        subcol1, subcol2 = st.columns(2)
-                        with subcol1:
-                            if hedge_slope is not None:
-                                st.metric("Hedge Ratio", f"y = {hedge_slope:.4f}x")
-                            else:
-                                st.info("Not enough points to fit line")
-                        with subcol2:
-                            if min_volatility is not None:
-                                st.metric("Min Volatility", f"{min_volatility:.2f}%",
-                                         help="Minimum volatility (standard deviation of returns) across all allocations")
+        # Auto-generate heatmap
+        try:
+            fig, optimal_info, min_volatility, hedge_slope = generate_heatmap(bets, p)
+            st.pyplot(fig)
             
-            except Exception as e:
-                st.error(f"Error generating heatmap: {str(e)}")
-                st.exception(e)
+            # Display optimal allocations
+            if optimal_info:
+                st.markdown("#### Optimal Allocations")
+                
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    st.markdown("**Best Expected Profit:**")
+                    subcol1, subcol2, subcol3 = st.columns(3)
+                    with subcol1:
+                        st.metric("Bet 1", f"{optimal_info['alloc1_pct']:.1f}%")
+                    with subcol2:
+                        st.metric("Bet 2", f"{optimal_info['alloc2_pct']:.1f}%")
+                    with subcol3:
+                        st.metric("Expected Profit", f"${optimal_info['profit']:.2f}")
+                
+                with col2:
+                    st.markdown("**Minimum Risk Hedge:**")
+                    subcol1, subcol2 = st.columns(2)
+                    with subcol1:
+                        if hedge_slope is not None:
+                            st.metric("Hedge Ratio", f"y = {hedge_slope:.4f}x")
+                        else:
+                            st.info("Not enough points to fit line")
+                    with subcol2:
+                        if min_volatility is not None:
+                            st.metric("Min Volatility", f"{min_volatility:.2f}%",
+                                     help="Minimum volatility (standard deviation of returns) across all allocations")
+        
+        except Exception as e:
+            st.error(f"Error generating heatmap: {str(e)}")
+            st.exception(e)
     
     elif bets and len(bets) != 2:
         st.info(f"Allocation heatmap is only available for exactly 2 bets. You currently have {len(bets)} bet(s).")

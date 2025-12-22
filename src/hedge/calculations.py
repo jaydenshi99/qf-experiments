@@ -282,8 +282,25 @@ def get_optimal_allocation(bets, p, target_return, n_simulations=5000, analytica
     # Create vector of ones
     ones = np.ones(len(mu)).reshape(-1, 1)
     
-    # Calculate inverse
-    sigma_inv = np.linalg.inv(sigma)
+    # Calculate inverse with error handling
+    try:
+        sigma_inv = np.linalg.inv(sigma)
+    except np.linalg.LinAlgError:
+        sigma_str = np.array2string(
+            sigma,
+            precision=6,
+            suppress_small=True,
+            max_line_width=120
+        )
+        raise ValueError(
+            "**Cannot calculate optimal allocation:** The covariance matrix is singular.\n\n"
+            "**This typically happens when:**\n"
+            " - Two or more bets are perfectly correlated (identical payoff structures)\n"
+            " - One bet's returns can be perfectly replicated by a linear combination of other bets\n"
+            " - Numerical precision issues with very similar bets\n\n"
+            f"**Covariance matrix (σ):**\n{sigma_str}\n\n"
+            "Please ensure your bets have different, independent payoff structures."
+        )
     
     # Calculate A, B, C
     A = (ones.T @ sigma_inv @ ones).item()
