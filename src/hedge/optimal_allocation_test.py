@@ -4,6 +4,7 @@ Test section for get_optimal_allocation function.
 
 import streamlit as st
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 from src.hedge.calculations import (
     get_optimal_allocation,
@@ -28,7 +29,7 @@ def render_optimal_allocation_test(bets, p):
     Find the optimal portfolio allocation from a given target return.
     """)
     
-    # Input for target return (percentage of capital)
+    # Input for target return
     target_return_percent = st.number_input(
         "Target Expected Return (%)",
         min_value=None,
@@ -39,9 +40,7 @@ def render_optimal_allocation_test(bets, p):
         help="Target expected return as a percentage of capital (e.g. 10 for 10%)."
     )
     
-    # ------------------------------------------------------------
-    # Calculate statistics once (no caching to keep logic simple)
-    # ------------------------------------------------------------
+    # Calculate statistics once
     try:
         with st.spinner('Calculating bet statistics...'):
             stats_per_dollar = get_bet_statistics_per_dollar(bets, p)
@@ -56,9 +55,7 @@ def render_optimal_allocation_test(bets, p):
     # Convert target return from % to per-dollar for optimisation formulas
     target_return = target_return_percent / 100.0
 
-    # ------------------------------------------------------------
     # Optimal allocation for the chosen target return
-    # ------------------------------------------------------------
     optimal_alloc = None
     try:
         with st.spinner('Calculating optimal allocation...'):
@@ -109,7 +106,7 @@ def render_optimal_allocation_test(bets, p):
     st.markdown("---")
     st.markdown("### Efficient Frontier")
     st.caption(
-        "Efficient Frontier:Minimum achievable volatility for each target expected profit level, "
+        "Efficient Frontier - Minimum achievable volatility for each target expected profit level, "
         "based on the current bets and probability."
     )
 
@@ -125,6 +122,7 @@ def render_optimal_allocation_test(bets, p):
     frontier_returns = []
     frontier_vols = []
     frontier_sharpes = []
+    frontier_weights = []
 
     try:
         for r in returns_range:
@@ -138,6 +136,7 @@ def render_optimal_allocation_test(bets, p):
             ret_pct = exp_prof * 100.0  # convert to %
             frontier_returns.append(ret_pct)
             frontier_vols.append(vol)
+            frontier_weights.append(w.flatten())
 
             # Sharpe ratio with risk‑free rate = 0 (return / volatility, both in %)
             sharpe = ret_pct / vol if vol > 0 else None
@@ -151,10 +150,11 @@ def render_optimal_allocation_test(bets, p):
         return
 
     if frontier_returns:
-        paired = sorted(zip(frontier_returns, frontier_vols, frontier_sharpes), key=lambda x: x[0])
+        paired = sorted(zip(frontier_returns, frontier_vols, frontier_sharpes, frontier_weights), key=lambda x: x[0])
         xs = [p[0] for p in paired]
         ys = [p[1] for p in paired]
         zs = [p[2] for p in paired]
+        ws_sorted = [p[3] for p in paired]
 
         fig, ax1 = plt.subplots(figsize=(8, 5))
 
@@ -184,5 +184,51 @@ def render_optimal_allocation_test(bets, p):
         ax1.set_title("Efficient Frontier (Volatility & Sharpe)")
         plt.tight_layout()
         st.pyplot(fig)
+
+        # Summary: min volatility point and max Sharpe point
+        min_vol_idx = int(np.nanargmin(ys))
+        min_vol_val = ys[min_vol_idx]
+        min_vol_ret = xs[min_vol_idx]
+        min_vol_w = ws_sorted[min_vol_idx]
+
+        sharpe_defined = [(i, s) for i, s in enumerate(zs) if s is not None]
+        if sharpe_defined:
+            max_sh_idx, max_sh_val = max(sharpe_defined, key=lambda t: t[1])
+            max_sh_ret = xs[max_sh_idx]
+            max_sh_vol = ys[max_sh_idx]
+            max_sh_w = ws_sorted[max_sh_idx]
+        else:
+            max_sh_val = max_sh_ret = max_sh_vol = max_sh_w = None
+
+        st.markdown("#### Frontier Highlights")
+        cols_info = st.columns(2)
+        with cols_info[0]:
+            st.markdown("**Minimum Volatility Point**")
+            st.write(f"Return: {min_vol_ret:.2f}%")
+            st.write(f"Volatility: {min_vol_val:.2f}%")
+            st.write("Weights (%): " + ", ".join(f"{w*100:.2f}" for w in min_vol_w))
+        with cols_info[1]:
+            st.markdown("**Maximum Sharpe Point**")
+            if max_sh_w is not None:
+                st.write(f"Return: {max_sh_ret:.2f}%")
+                st.write(f"Volatility: {max_sh_vol:.2f}%")
+                st.write(f"Sharpe: {max_sh_val:.3f}")
+                st.write("Weights (%): " + ", ".join(f"{w*100:.2f}" for w in max_sh_w))
+            else:
+                st.write("Sharpe is undefined (volatility is zero for all points).")
+
+        # Detailed frontier table
+        table_rows = []
+        for ret, vol, sh, w in zip(xs, ys, zs, ws_sorted):
+            table_rows.append({
+                "Expected Return (%)": f"{ret:.4f}",
+                "Volatility (%)": f"{vol:.4f}",
+                "Sharpe": f"{sh:.4f}" if sh is not None else "N/A",
+                "Weights (%)": ", ".join(f"{wi*100:.2f}" for wi in w)
+            })
+        df_frontier = pd.DataFrame(table_rows)
+
+        with st.expander("Frontier Points (all target returns)"):
+            st.dataframe(df_frontier, use_container_width=True)
     else:
         st.info("Could not generate efficient frontier for the current bets.")
