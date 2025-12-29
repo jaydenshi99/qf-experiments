@@ -24,50 +24,57 @@ def render_performance_testing_section(bets, p):
         Allocate money to your bets and compare the analytical calculation vs Monte Carlo simulation.
         """)
         
-        # Allocation inputs
-        st.markdown("#### Allocations")
-        allocations = []
-        
-        cols = st.columns(len(bets))
-        for i, (col, bet) in enumerate(zip(cols, bets)):
-            with col:
-                # Get bet description for help text
-                if 'payoff' in bet:
-                    bet_desc = bet['payoff']
-                else:
-                    bet_desc = bet.get('condition', 'N/A')
-                
-                allocation = st.number_input(
-                    f"Bet {i+1}",
-                    min_value=0.0,
-                    value=100.0,
-                    step=10.0,
-                    format="%.2f",
-                    key=f"allocation_{i}",
-                    help=bet_desc
+        # Use a form to prevent reruns on input changes
+        with st.form(key="performance_testing_form"):
+            # Allocation inputs
+            st.markdown("#### Allocations")
+            allocations = []
+
+            cols = st.columns(len(bets))
+            for i, (col, bet) in enumerate(zip(cols, bets)):
+                with col:
+                    # Get bet description for help text
+                    if 'payoff' in bet:
+                        bet_desc = bet['payoff']
+                    else:
+                        bet_desc = bet.get('condition', 'N/A')
+
+                    allocation = st.number_input(
+                        f"Bet {i+1}",
+                        min_value=0.0,
+                        value=100.0,
+                        step=10.0,
+                        format="%.2f",
+                        key=f"perf_allocation_{i}",
+                        help=bet_desc
+                    )
+                    allocations.append(allocation)
+
+            # Simulation parameters
+            col1, col2 = st.columns(2)
+            with col1:
+                n_simulations = st.number_input(
+                    "Number of Simulations",
+                    min_value=1000,
+                    max_value=1000000,
+                    value=10000,
+                    step=10000,
+                    key="perf_n_simulations",
+                    help="More simulations = more accurate but slower"
                 )
-                allocations.append(allocation)
-        
-        # Simulation parameters
-        col1, col2 = st.columns(2)
-        with col1:
-            n_simulations = st.number_input(
-                "Number of Simulations",
-                min_value=1000,
-                max_value=1000000,
-                value=10000,
-                step=10000,
-                help="More simulations = more accurate but slower"
-            )
-        with col2:
-            seed = st.number_input(
-                "Random Seed",
-                min_value=0,
-                value=42,
-                help="For reproducible results"
-            )
-        
-        if st.button("Calculate Performance", type="primary", key="calculate_performance"):
+            with col2:
+                seed = st.number_input(
+                    "Random Seed",
+                    min_value=0,
+                    value=42,
+                    key="perf_seed",
+                    help="For reproducible results"
+                )
+
+            # Submit button for the form
+            submitted = st.form_submit_button("Calculate Performance", type="primary")
+
+        if submitted:
             # Calculate using both methods
             try:
                 # Set random seed for reproducibility

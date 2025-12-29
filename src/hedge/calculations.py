@@ -75,7 +75,9 @@ def get_profit_distribution_analytical(bets, allocations, p):
             elif 'condition' in bet:
                 success = evaluate_condition(bet['condition'], h_t)
                 if success:
-                    bet_profit = allocation * bet['odds']
+                    # Decimal odds: total payout = allocation * odds
+                    # Profit = total payout - stake = allocation * (odds - 1)
+                    bet_profit = allocation * (bet['odds'] - 1)
                 else:
                     bet_profit = -allocation
             total_profit += bet_profit
@@ -112,7 +114,9 @@ def get_profit_distribution_monte_carlo(bets, allocations, p, n_simulations=3000
             elif 'condition' in bet:
                 success = evaluate_condition(bet['condition'], h_t)
                 if success:
-                    bet_profit = allocation * bet['odds']
+                    # Decimal odds: total payout = allocation * odds
+                    # Profit = total payout - stake = allocation * (odds - 1)
+                    bet_profit = allocation * (bet['odds'] - 1)
                 else:
                     bet_profit = -allocation
             total_profit += bet_profit

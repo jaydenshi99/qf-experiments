@@ -22,7 +22,7 @@ SIMPLE_BET_PRESET = {
     "description": "Condition-based bet with fixed odds (win/lose)",
     "params": {
         "condition": {"label": "Condition", "help": "Payout condition (e.g., 'H_2 == 1', 'H_5 >= 3', 'H_5 < 10')", "default": "H_1 == 1"},
-        "odds": {"label": "Odds", "help": "x : 1 odds (e.g., 2.0 = 2x payout)", "min": 0.01, "default": 1.0, "step": 0.05}
+        "odds": {"label": "Odds", "help": "Decimal odds - total payout including stake (e.g., 2.0 = win $2 total for $1 bet = $1 profit). Fair odds = 1/p_true", "min": 0.01, "default": 1.0, "step": 0.05}
     }
 }
 
