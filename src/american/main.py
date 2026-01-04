@@ -29,7 +29,7 @@ def main():
     
     # Dynamic Sidebar based on selected view
     with st.sidebar:
-        st.title("Jayden Shi")
+        st.title("Parameters")
         
         # Show model parameters checkbox
         show_intermediate = st.checkbox("Show Model Parameters", help="Show intermediate calculation values (dt, u, d, p)")
