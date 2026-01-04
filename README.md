@@ -6,8 +6,6 @@ View the streamlit applications here:
 - [Binomial Options Pricing Model](https://qf-experiments-american-8cc3fyrekoq6tepubug2sk.streamlit.app/)
 - [Portfolio Hedging](https://qf-experiments-hedge-5kaxtafgdgjappbx3ufxfhn.streamlit.app/)
 
-**Markdown hyperlink syntax:** `[Link Text](https://url-here.com)`
-
 ## Setup
 
 1. Clone the repository
