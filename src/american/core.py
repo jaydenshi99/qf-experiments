@@ -76,12 +76,12 @@ def plot_american_options_tree(model, coordinates, show_pnl=False, entry_price=N
     Plot the binomial tree with early exercise decisions highlighted or P&L analysis.
     """
     fig, ax = plt.subplots(figsize=(16, 10))
-    # Dark mode theme
-    fig.patch.set_facecolor('#0f1115')
-    ax.set_facecolor('#0f1115')
+    # White background theme
+    fig.patch.set_facecolor('white')
+    ax.set_facecolor('white')
     for spine in ax.spines.values():
-        spine.set_color('#444a55')
-    ax.tick_params(colors='#d0d3d8')
+        spine.set_color('#cccccc')
+    ax.tick_params(colors='#333333')
     
     # Get all nodes for color mapping
     all_nodes = list(model.tree.nodes.values())
@@ -143,8 +143,8 @@ def plot_american_options_tree(model, coordinates, show_pnl=False, entry_price=N
         # Draw connection to up child
         if node.up_child:
             up_child_coords = coordinates[(node.up_child.time_step, node.up_child.node_index)]
-            ax.plot([x, up_child_coords[0]], [y, up_child_coords[1]], 
-                   color='#8a8f98', linewidth=2, alpha=0.8, zorder=1)
+            ax.plot([x, up_child_coords[0]], [y, up_child_coords[1]],
+                   color='#444444', linewidth=2, alpha=0.6, zorder=1)
             
             # Add up movement label
             mid_x = (x + up_child_coords[0]) / 2
@@ -156,8 +156,8 @@ def plot_american_options_tree(model, coordinates, show_pnl=False, entry_price=N
         # Draw connection to down child
         if node.down_child:
             down_child_coords = coordinates[(node.down_child.time_step, node.down_child.node_index)]
-            ax.plot([x, down_child_coords[0]], [y, down_child_coords[1]], 
-                   color='#8a8f98', linewidth=2, alpha=0.8, zorder=1)
+            ax.plot([x, down_child_coords[0]], [y, down_child_coords[1]],
+                   color='#444444', linewidth=2, alpha=0.6, zorder=1)
             
             # Add down movement label
             mid_x = (x + down_child_coords[0]) / 2
@@ -271,17 +271,17 @@ def plot_american_options_tree(model, coordinates, show_pnl=False, entry_price=N
     # Set title based on mode
     if show_pnl and entry_price is not None and num_contracts is not None and commission_per_contract is not None:
         ax.set_title(f"{model.option_style.title()} {model.option_type.title()} Options P&L Analysis\n"
-                    f"(Red=Losses, Green=Profits)", 
-                    fontsize=16, weight='bold', pad=20, color='#e8eaed')
+                    f"(Red=Losses, Green=Profits)",
+                    fontsize=16, weight='bold', pad=20, color='black')
     else:
         ax.set_title(f"{model.option_style.title()} {model.option_type.title()} Options Pricing Model\n"
-                    f"(White borders = Early Exercise)", 
-                    fontsize=16, weight='bold', pad=20, color='#e8eaed')
-    
-    ax.set_xlabel("Time Steps", fontsize=12, color='#d0d3d8')
-    ax.set_ylabel("Node Position", fontsize=12, color='#d0d3d8')
+                    f"(White borders = Early Exercise)",
+                    fontsize=16, weight='bold', pad=20, color='black')
+
+    ax.set_xlabel("Time Steps", fontsize=12, color='#333333')
+    ax.set_ylabel("Node Position", fontsize=12, color='#333333')
     ax.set_xticks(range(model.n_steps + 1))
-    ax.grid(True, linestyle='--', alpha=0.5, color='#2a2e35')
+    ax.grid(True, linestyle='--', alpha=0.3, color='#666666')
     ax.set_aspect('equal')
     
     # Add legend based on mode
@@ -300,9 +300,9 @@ def plot_american_options_tree(model, coordinates, show_pnl=False, entry_price=N
                       markersize=10, label='Early Exercise', markeredgecolor='#FFFFFF', markeredgewidth=2)
         ]
     
-    leg = ax.legend(handles=legend_elements, loc='upper right', facecolor='#151922', edgecolor='#444a55')
+    leg = ax.legend(handles=legend_elements, loc='upper right', facecolor='white', edgecolor='#cccccc')
     for text in leg.get_texts():
-        text.set_color('#e8eaed')
+        text.set_color('#333333')
     
     plt.tight_layout()
     return fig, early_exercise_nodes
