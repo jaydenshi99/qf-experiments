@@ -40,31 +40,8 @@ def calculate_node_coordinates(model):
     return coordinates
 
 
-def calculate_pnl_at_node(node, entry_price, num_contracts, commission_per_contract, option_type, position_direction=1):
-    """Calculate P&L at node."""
-    if node.option_price is None:
-        return None
-    
-    # Current option value (positive for long, negative for short)
-    current_value = node.option_price * num_contracts * 100 * position_direction
-    
-    # Entry cost (positive for long, negative for short)
-    entry_cost = entry_price * num_contracts * 100
-    
-    # Commission costs (entry + exit) - always positive
-    total_commission = commission_per_contract * num_contracts * 2
-    
-    # P&L calculation
-    # For long: P&L = current_value - entry_cost - commission
-    # For short: P&L = current_value - entry_cost - commission
-    # (entry_cost is already negative for short positions)
-    pnl = current_value - entry_cost - total_commission
-    
-    return pnl
-
-
-def plot_american_options_tree(model, coordinates, show_pnl=False, entry_price=None, num_contracts=None, commission_per_contract=None, position_direction=1, option_type_for_pnl=None):
-    """Plot binomial tree with early exercise or P&L."""
+def plot_american_options_tree(model, coordinates):
+    """Plot binomial tree with early exercise."""
     fig, ax = plt.subplots(figsize=(16, 10))
     # White background theme
     fig.patch.set_facecolor('white')
@@ -72,59 +49,32 @@ def plot_american_options_tree(model, coordinates, show_pnl=False, entry_price=N
     for spine in ax.spines.values():
         spine.set_color('#cccccc')
     ax.tick_params(colors='#333333')
-    
+
     # Get all nodes for color mapping
     all_nodes = list(model.tree.nodes.values())
-    
-    if show_pnl and entry_price is not None and num_contracts is not None and commission_per_contract is not None:
-        # P&L mode - calculate P&L for all nodes
-        all_pnl_values = []
-        for node in all_nodes:
-            pnl = calculate_pnl_at_node(node, entry_price, num_contracts, commission_per_contract, option_type_for_pnl or model.option_type, position_direction)
-            if pnl is not None:
-                all_pnl_values.append(pnl)
-        
-        if not all_pnl_values:
-            min_value, max_value = -1000, 1000
-        else:
-            min_value, max_value = min(all_pnl_values), max(all_pnl_values)
-            # Ensure symmetric range for better visualization
-            max_abs = max(abs(min_value), abs(max_value))
-            min_value, max_value = -max_abs, max_abs
-        
-        # P&L color scheme: Red (losses) → Green (profits) with gradients, no yellow/orange
-        pnl_colors = [
-            '#DC2626',  # dark red for high losses
-            '#EF4444',  # medium red for medium losses
-            '#F87171',  # light red for small losses
-            '#34D399',  # light green for small profits
-            '#10B981',  # medium green for medium profits
-            '#059669',  # dark green for high profits
-        ]
-        color_cmap = mcolors.LinearSegmentedColormap.from_list('pnl', pnl_colors, N=256)
+
+    # Theoretical price mode
+    all_option_prices = [node.option_price for node in all_nodes if node.option_price is not None]
+
+    # Find the root node price for reference
+    root_node = model.tree.nodes.get((0, 0))
+    root_price = root_node.option_price if root_node and root_node.option_price is not None else 0
+
+    if not all_option_prices:
+        min_value, max_value = 0, 1
     else:
-        # Theoretical price mode
-        all_option_prices = [node.option_price for node in all_nodes if node.option_price is not None]
-        
-        # Find the root node price for reference
-        root_node = model.tree.nodes.get((0, 0))
-        root_price = root_node.option_price if root_node and root_node.option_price is not None else 0
-        
-        if not all_option_prices:
-            min_value, max_value = 0, 1
-        else:
-            min_value, max_value = min(all_option_prices), max(all_option_prices)
-        
-        # Use the same P&L color scheme for theoretical prices - pure red-green gradient
-        pnl_colors = [
-            '#DC2626',  # dark red for low values
-            '#EF4444',  # medium red for medium-low values
-            '#F87171',  # light red for small values
-            '#34D399',  # light green for medium-high values
-            '#10B981',  # medium green for high values
-            '#059669',  # dark green for highest values
-        ]
-        color_cmap = mcolors.LinearSegmentedColormap.from_list('pnl', pnl_colors, N=256)
+        min_value, max_value = min(all_option_prices), max(all_option_prices)
+
+    # Pure red-green gradient color scheme
+    price_colors = [
+        '#DC2626',  # dark red for low values
+        '#EF4444',  # medium red for medium-low values
+        '#F87171',  # light red for small values
+        '#34D399',  # light green for medium-high values
+        '#10B981',  # medium green for high values
+        '#059669',  # dark green for highest values
+    ]
+    color_cmap = mcolors.LinearSegmentedColormap.from_list('price', price_colors, N=256)
 
     # Draw connections first - iterate through all nodes and draw connections to their children
     for (t, i), (x, y) in coordinates.items():
@@ -186,40 +136,26 @@ def plot_american_options_tree(model, coordinates, show_pnl=False, entry_price=N
                     if is_early_exercise:
                         early_exercise_nodes.append((t, i))
         
-        # Color mapping based on mode
-        if show_pnl and entry_price is not None and num_contracts is not None and commission_per_contract is not None:
-            # P&L mode
-            pnl = calculate_pnl_at_node(node, entry_price, num_contracts, commission_per_contract, option_type_for_pnl or model.option_type, position_direction)
-            if pnl is not None:
-                # Normalize P&L to 0-1 range, with 0.5 being breakeven
-                if max_value == min_value:
-                    color_norm = 0.5  # breakeven
-                else:
-                    color_norm = (pnl - min_value) / (max_value - min_value)
-                color = color_cmap(color_norm)
+        # Color mapping
+        if node.option_price is not None:
+            # Root node is always neutral color (middle of gradient)
+            if t == 0 and i == 0:  # Root node
+                color = color_cmap(0.5)  # Neutral color from existing gradient
             else:
-                color = 'lightgray'
+                # Color other nodes relative to root node
+                if root_price > 0:
+                    relative_value = (node.option_price - root_price) / root_price
+                    # Clamp relative value to reasonable range
+                    relative_value = max(-1, min(1, relative_value))
+                    # Map to 0-1 range with 0.5 being neutral (same as root)
+                    color_norm = 0.5 + (relative_value * 0.5)
+                    color = color_cmap(color_norm)
+                else:
+                    # Fallback if root price is 0
+                    color_norm = (node.option_price - min_value) / (max_value - min_value + 1e-9)
+                    color = color_cmap(color_norm)
         else:
-            # Theoretical price mode
-            if node.option_price is not None:
-                # Root node is always neutral color (middle of gradient)
-                if t == 0 and i == 0:  # Root node
-                    color = color_cmap(0.5)  # Neutral color from existing gradient
-                else:
-                    # Color other nodes relative to root node
-                    if root_price > 0:
-                        relative_value = (node.option_price - root_price) / root_price
-                        # Clamp relative value to reasonable range
-                        relative_value = max(-1, min(1, relative_value))
-                        # Map to 0-1 range with 0.5 being neutral (same as root)
-                        color_norm = 0.5 + (relative_value * 0.5)
-                        color = color_cmap(color_norm)
-                    else:
-                        # Fallback if root price is 0
-                        color_norm = (node.option_price - min_value) / (max_value - min_value + 1e-9)
-                        color = color_cmap(color_norm)
-            else:
-                color = 'lightgray'
+            color = 'lightgray'
         
         # Node size and style based on state
         if is_early_exercise:
@@ -236,37 +172,20 @@ def plot_american_options_tree(model, coordinates, show_pnl=False, entry_price=N
             ax.add_patch(circle)
         
         # Node labels
-        if show_pnl and entry_price is not None and num_contracts is not None and commission_per_contract is not None:
-            # P&L mode labels
-            if node.option_price is not None:
-                pnl = calculate_pnl_at_node(node, entry_price, num_contracts, commission_per_contract, option_type_for_pnl or model.option_type, position_direction)
-                if pnl is not None:
-                    label = f"S: ${node.stock_price:.1f}\nO: ${node.option_price:.2f}\nP&L: ${pnl:.0f}"
-                else:
-                    label = f"S: ${node.stock_price:.1f}\nO: ?\nP&L: ?"
-            else:
-                label = f"S: ${node.stock_price:.1f}\nO: ?\nP&L: ?"
+        if node.option_price is not None:
+            label = f"S: ${node.stock_price:.1f}\nO: ${node.option_price:.2f}"
+            if is_early_exercise:
+                label += "\nEXERCISE"
         else:
-            # Theoretical price mode labels
-            if node.option_price is not None:
-                label = f"S: ${node.stock_price:.1f}\nO: ${node.option_price:.2f}"
-                if is_early_exercise:
-                    label += "\nEXERCISE"
-            else:
-                label = f"S: ${node.stock_price:.1f}\nO: ?"
+            label = f"S: ${node.stock_price:.1f}\nO: ?"
         
         ax.text(x, y, label, ha='center', va='center', fontsize=8, 
                color='#ffffff', weight='bold', zorder=6)
     
-    # Set title based on mode
-    if show_pnl and entry_price is not None and num_contracts is not None and commission_per_contract is not None:
-        ax.set_title(f"{model.option_style.title()} {model.option_type.title()} Options P&L Analysis\n"
-                    f"(Red=Losses, Green=Profits)",
-                    fontsize=16, weight='bold', pad=20, color='black')
-    else:
-        ax.set_title(f"{model.option_style.title()} {model.option_type.title()} Options Pricing Model\n"
-                    f"(White borders = Early Exercise)",
-                    fontsize=16, weight='bold', pad=20, color='black')
+    # Set title
+    ax.set_title(f"{model.option_style.title()} {model.option_type.title()} Options Pricing Model\n"
+                f"(White borders = Early Exercise)",
+                fontsize=16, weight='bold', pad=20, color='black')
 
     ax.set_xlabel("Time Steps", fontsize=12, color='#333333')
     ax.set_ylabel("Node Position", fontsize=12, color='#333333')
@@ -274,21 +193,11 @@ def plot_american_options_tree(model, coordinates, show_pnl=False, entry_price=N
     ax.grid(True, linestyle='--', alpha=0.3, color='#666666')
     ax.set_aspect('equal')
     
-    # Add legend based on mode
-    if show_pnl and entry_price is not None and num_contracts is not None and commission_per_contract is not None:
-        # P&L legend - only red and green
-        legend_elements = [
-            plt.Line2D([0], [0], marker='o', color='w', markerfacecolor='#DC2626', 
-                      markersize=10, label='Losses'),
-            plt.Line2D([0], [0], marker='o', color='w', markerfacecolor='#10B981', 
-                      markersize=10, label='Profits')
-        ]
-    else:
-        # Early exercise legend
-        legend_elements = [
-            plt.Line2D([0], [0], marker='o', color='w', markerfacecolor='#BBDEFB', 
-                      markersize=10, label='Early Exercise', markeredgecolor='#FFFFFF', markeredgewidth=2)
-        ]
+    # Add legend
+    legend_elements = [
+        plt.Line2D([0], [0], marker='o', color='w', markerfacecolor='#BBDEFB',
+                  markersize=10, label='Early Exercise', markeredgecolor='#FFFFFF', markeredgewidth=2)
+    ]
     
     leg = ax.legend(handles=legend_elements, loc='upper right', facecolor='white', edgecolor='#cccccc')
     for text in leg.get_texts():

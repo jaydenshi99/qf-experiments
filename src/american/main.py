@@ -1,13 +1,11 @@
 """
 Main Streamlit application for Binomial Options Pricing Model
 
-This module orchestrates the tab-based interface for theoretical pricing
-and P&L analysis visualizations.
+This module orchestrates the interface for theoretical pricing visualization.
 """
 
 import streamlit as st
 from .theoretical import theoretical_prices_tab
-from .pnl import pnl_analysis_tab
 
 
 def main():
@@ -17,17 +15,8 @@ def main():
     )
     
     st.title("European vs American Options")
-    
-    # Top bar selector (moved before sidebar to determine layout)
-    # Portfolio Analysis temporarily disabled
-    selected_view = "American vs European"
-    # selected_view = st.selectbox(
-    #     "Select Analysis Type",
-    #     ["Portfolio Analysis", "American vs European"],
-    #     label_visibility="collapsed"
-    # )
-    
-    # Dynamic Sidebar based on selected view
+
+    # Sidebar
     with st.sidebar:
         st.title("Parameters")
         
@@ -45,12 +34,7 @@ def main():
         # Tree parameters
         st.markdown("### Tree Parameters")
         n_steps = st.slider("Number of Steps", 1, 10, 4, 1)
-        
-        # Set defaults for unused parameters
-        n_paths = 1000
-        n_time_steps = 252
-        mu = r
-    
+
     # Model parameters dictionary
     model_params = {
         'S0': S0,
@@ -59,16 +43,8 @@ def main():
         'r': r,
         'sigma': sigma,
         'n_steps': n_steps,
-        'n_paths': n_paths,
-        'n_time_steps': n_time_steps,
-        'mu': mu,
-        'show_intermediate': show_intermediate,
-        'portfolio': []
+        'show_intermediate': show_intermediate
     }
-    
-    # Display selected content
+
+    # Display content
     theoretical_prices_tab(model_params)
-    # if selected_view == "Portfolio Analysis":
-    #     pnl_analysis_tab(model_params)
-    # else:
-    #     theoretical_prices_tab(model_params)

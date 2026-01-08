@@ -79,40 +79,28 @@ def theoretical_prices_tab(model_params):
         with col1:
             st.subheader("European Call")
             coordinates_eu_call = calculate_node_coordinates(eu_call_model)
-            fig_eu_call, _ = plot_american_options_tree(
-                eu_call_model, coordinates_eu_call, 
-                show_pnl=False
-            )
+            fig_eu_call, _ = plot_american_options_tree(eu_call_model, coordinates_eu_call)
             st.pyplot(fig_eu_call, use_container_width=True)
-        
+
         with col2:
             st.subheader("American Call")
             coordinates_am_call = calculate_node_coordinates(am_call_model)
-            fig_am_call, early_exercise_nodes_call = plot_american_options_tree(
-                am_call_model, coordinates_am_call,
-                show_pnl=False
-            )
+            fig_am_call, early_exercise_nodes_call = plot_american_options_tree(am_call_model, coordinates_am_call)
             st.pyplot(fig_am_call, use_container_width=True)
-        
+
         # Second row: European Put and American Put
         col3, col4 = st.columns(2)
-        
+
         with col3:
             st.subheader("European Put")
             coordinates_eu_put = calculate_node_coordinates(eu_put_model)
-            fig_eu_put, _ = plot_american_options_tree(
-                eu_put_model, coordinates_eu_put,
-                show_pnl=False
-            )
+            fig_eu_put, _ = plot_american_options_tree(eu_put_model, coordinates_eu_put)
             st.pyplot(fig_eu_put, use_container_width=True)
-        
+
         with col4:
             st.subheader("American Put")
             coordinates_am_put = calculate_node_coordinates(am_put_model)
-            fig_am_put, early_exercise_nodes_put = plot_american_options_tree(
-                am_put_model, coordinates_am_put,
-                show_pnl=False
-            )
+            fig_am_put, early_exercise_nodes_put = plot_american_options_tree(am_put_model, coordinates_am_put)
             st.pyplot(fig_am_put, use_container_width=True)
         
         # Early exercise analysis
