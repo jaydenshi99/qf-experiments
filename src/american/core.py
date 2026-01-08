@@ -43,12 +43,12 @@ def calculate_node_coordinates(model):
 def plot_american_options_tree(model, coordinates):
     """Plot binomial tree with early exercise."""
     fig, ax = plt.subplots(figsize=(16, 10))
-    # White background theme
-    fig.patch.set_facecolor('white')
-    ax.set_facecolor('white')
+    # Dark background theme
+    fig.patch.set_facecolor('#0E1117')
+    ax.set_facecolor('#0E1117')
     for spine in ax.spines.values():
-        spine.set_color('#cccccc')
-    ax.tick_params(colors='#333333')
+        spine.set_color('#31333F')
+    ax.tick_params(colors='#FAFAFA')
 
     # Get all nodes for color mapping
     all_nodes = list(model.tree.nodes.values())
@@ -84,26 +84,26 @@ def plot_american_options_tree(model, coordinates):
         if node.up_child:
             up_child_coords = coordinates[(node.up_child.time_step, node.up_child.node_index)]
             ax.plot([x, up_child_coords[0]], [y, up_child_coords[1]],
-                   color='#444444', linewidth=2, alpha=0.6, zorder=1)
-            
+                   color='#8B8B8B', linewidth=2, alpha=0.6, zorder=1)
+
             # Add up movement label
             mid_x = (x + up_child_coords[0]) / 2
             mid_y = (y + up_child_coords[1]) / 2
             # Use a softer green for up moves
-            ax.text(mid_x, mid_y + 0.1, '↑', ha='center', va='center', 
+            ax.text(mid_x, mid_y + 0.1, '↑', ha='center', va='center',
                    fontsize=12, color='#66BB6A', weight='bold', zorder=3)
-        
+
         # Draw connection to down child
         if node.down_child:
             down_child_coords = coordinates[(node.down_child.time_step, node.down_child.node_index)]
             ax.plot([x, down_child_coords[0]], [y, down_child_coords[1]],
-                   color='#444444', linewidth=2, alpha=0.6, zorder=1)
-            
+                   color='#8B8B8B', linewidth=2, alpha=0.6, zorder=1)
+
             # Add down movement label
             mid_x = (x + down_child_coords[0]) / 2
             mid_y = (y + down_child_coords[1]) / 2
             # Use a softer red for down moves
-            ax.text(mid_x, mid_y - 0.1, '↓', ha='center', va='center', 
+            ax.text(mid_x, mid_y - 0.1, '↓', ha='center', va='center',
                    fontsize=12, color='#EF5350', weight='bold', zorder=3)
     
     # Draw nodes
@@ -159,16 +159,16 @@ def plot_american_options_tree(model, coordinates):
         
         # Node size and style based on state
         if is_early_exercise:
-            # Early exercise node (highlighted with white border, keep same size as regular)
+            # Early exercise node (highlighted with bright border)
             circle = plt.Circle((x, y), 0.2, color=color, ec='#FFFFFF', linewidth=3, zorder=5)
             ax.add_patch(circle)
         elif node.is_terminal():
             # Terminal node
-            circle = plt.Circle((x, y), 0.25, color=color, ec='#9aa0a6', linewidth=2, zorder=4)
+            circle = plt.Circle((x, y), 0.25, color=color, ec='#C0C0C0', linewidth=2, zorder=4)
             ax.add_patch(circle)
         else:
             # Regular node
-            circle = plt.Circle((x, y), 0.2, color=color, ec='#9aa0a6', linewidth=1, zorder=3)
+            circle = plt.Circle((x, y), 0.2, color=color, ec='#808080', linewidth=1, zorder=3)
             ax.add_patch(circle)
         
         # Node labels
@@ -185,23 +185,23 @@ def plot_american_options_tree(model, coordinates):
     # Set title
     ax.set_title(f"{model.option_style.title()} {model.option_type.title()} Options Pricing Model\n"
                 f"(White borders = Early Exercise)",
-                fontsize=16, weight='bold', pad=20, color='black')
+                fontsize=16, weight='bold', pad=20, color='#FAFAFA')
 
-    ax.set_xlabel("Time Steps", fontsize=12, color='#333333')
-    ax.set_ylabel("Node Position", fontsize=12, color='#333333')
+    ax.set_xlabel("Time Steps", fontsize=12, color='#FAFAFA')
+    ax.set_ylabel("Node Position", fontsize=12, color='#FAFAFA')
     ax.set_xticks(range(model.n_steps + 1))
-    ax.grid(True, linestyle='--', alpha=0.3, color='#666666')
+    ax.grid(True, linestyle='--', alpha=0.3, color='#31333F')
     ax.set_aspect('equal')
-    
+
     # Add legend
     legend_elements = [
         plt.Line2D([0], [0], marker='o', color='w', markerfacecolor='#BBDEFB',
                   markersize=10, label='Early Exercise', markeredgecolor='#FFFFFF', markeredgewidth=2)
     ]
-    
-    leg = ax.legend(handles=legend_elements, loc='upper right', facecolor='white', edgecolor='#cccccc')
+
+    leg = ax.legend(handles=legend_elements, loc='upper right', facecolor='#262730', edgecolor='#31333F')
     for text in leg.get_texts():
-        text.set_color('#333333')
+        text.set_color('#FAFAFA')
     
     plt.tight_layout()
     return fig, early_exercise_nodes
