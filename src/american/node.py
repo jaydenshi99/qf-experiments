@@ -9,26 +9,7 @@ from typing import Optional
 
 
 class BinomialNode:
-    """
-    A simple node in the binomial tree.
-    
-    Attributes
-    ----------
-    time_step : int
-        Time step (0 to n_steps)
-    node_index : int
-        Node index within the time step (0 to time_step)
-    stock_price : float
-        Stock price at this node
-    option_price : Optional[float]
-        Option price at this node (calculated later)
-    parent : Optional[BinomialNode]
-        Parent node (None for root)
-    up_child : Optional[BinomialNode]
-        Up movement child node
-    down_child : Optional[BinomialNode]
-        Down movement child node
-    """
+    """Node in binomial tree."""
     
     def __init__(
         self, 
@@ -57,29 +38,15 @@ class BinomialNode:
         return f"Node(t={self.time_step}, i={self.node_index}): S=${self.stock_price:.2f}"
     
     def is_terminal(self) -> bool:
-        """Check if this is a terminal node (final time step)."""
+        """Check if terminal node."""
         return self.up_child is None and self.down_child is None
     
     def is_root(self) -> bool:
-        """Check if this is the root node (time step 0)."""
+        """Check if root node."""
         return self.parent is None
     
     def get_payoff(self, strike_price: float, option_type: str) -> float:
-        """
-        Calculate the payoff at this node.
-        
-        Parameters
-        ----------
-        strike_price : float
-            Strike price of the option
-        option_type : str
-            'call' or 'put'
-            
-        Returns
-        -------
-        float
-            Payoff value
-        """
+        """Calculate payoff at node."""
         if option_type.lower() == 'call':
             return max(self.stock_price - strike_price, 0)
         elif option_type.lower() == 'put':
@@ -88,19 +55,5 @@ class BinomialNode:
             raise ValueError("Option type must be 'call' or 'put'")
     
     def get_exercise_value(self, strike_price: float, option_type: str) -> float:
-        """
-        Calculate the exercise value for American options.
-        
-        Parameters
-        ----------
-        strike_price : float
-            Strike price of the option
-        option_type : str
-            'call' or 'put'
-            
-        Returns
-        -------
-        float
-            Exercise value
-        """
+        """Calculate exercise value for American options."""
         return self.get_payoff(strike_price, option_type)

@@ -7,7 +7,7 @@ from .presets import PRESET_TYPES
 
 
 def render_add_bet_section():
-    """Render the section for adding new bets."""
+    """Render add bet section."""
     st.markdown("### Bets")
     
     # Add new bet section
@@ -146,7 +146,7 @@ def render_add_bet_section():
 
 
 def render_bets_display():
-    """Render the current bets display section."""
+    """Render bets display."""
     if st.session_state.bets:
         st.markdown("#### Current Bets")
         

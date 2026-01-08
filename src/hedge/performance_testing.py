@@ -14,7 +14,7 @@ from src.hedge.calculations import (
 
 
 def render_performance_testing_section(bets, p):
-    """Render the performance testing section."""
+    """Render performance testing section."""
     if bets:
         st.markdown("---")
         st.markdown("### Performance Testing")

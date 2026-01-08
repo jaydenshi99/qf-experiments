@@ -21,9 +21,7 @@ plt.switch_backend('Agg')
 
 
 def calculate_node_coordinates(model):
-    """
-    Calculate x, y coordinates for each node in the tree for visualisation.
-    """
+    """Calculate node coordinates for visualization."""
     coordinates = {}
     max_y_spread = model.n_steps / 2
     
@@ -43,13 +41,7 @@ def calculate_node_coordinates(model):
 
 
 def calculate_pnl_at_node(node, entry_price, num_contracts, commission_per_contract, option_type, position_direction=1):
-    """
-    Calculate P&L at a given node for a specific trade.
-    
-    Parameters:
-    - position_direction: 1 for long, -1 for short
-    - option_type: 'call' or 'put' - determines the payoff structure
-    """
+    """Calculate P&L at node."""
     if node.option_price is None:
         return None
     
@@ -72,9 +64,7 @@ def calculate_pnl_at_node(node, entry_price, num_contracts, commission_per_contr
 
 
 def plot_american_options_tree(model, coordinates, show_pnl=False, entry_price=None, num_contracts=None, commission_per_contract=None, position_direction=1, option_type_for_pnl=None):
-    """
-    Plot the binomial tree with early exercise decisions highlighted or P&L analysis.
-    """
+    """Plot binomial tree with early exercise or P&L."""
     fig, ax = plt.subplots(figsize=(16, 10))
     # White background theme
     fig.patch.set_facecolor('white')
@@ -309,9 +299,7 @@ def plot_american_options_tree(model, coordinates, show_pnl=False, entry_price=N
 
 
 def compare_european_american(model_params):
-    """
-    Compare European vs American option prices.
-    """
+    """Compare European vs American prices."""
     # Create European model
     european_model = BinomialModel(**model_params, option_style='european')
     european_model.build_stock_price_tree()

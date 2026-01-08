@@ -12,21 +12,7 @@ from matplotlib.colors import LinearSegmentedColormap
 
 
 def geometric_brownian_motion(S0, mu, sigma, T, n_steps, n_paths):
-    """
-    Generate stock price paths using geometric Brownian motion.
-    
-    Parameters:
-    - S0: Initial stock price
-    - mu: Drift (expected return)
-    - sigma: Volatility
-    - T: Time to maturity
-    - n_steps: Number of time steps
-    - n_paths: Number of simulation paths
-    
-    Returns:
-    - times: Array of time points
-    - paths: Array of stock price paths (n_paths x n_steps+1)
-    """
+    """Generate stock price paths via GBM."""
     dt = T / n_steps
     times = np.linspace(0, T, n_steps + 1)
     
@@ -45,7 +31,7 @@ def geometric_brownian_motion(S0, mu, sigma, T, n_steps, n_paths):
 
 
 def calculate_option_payoffs(paths, K, option_type='call'):
-    """Calculate option payoffs at expiration for all paths."""
+    """Calculate option payoffs at expiration."""
     final_prices = paths[:, -1]
     
     if option_type == 'call':
@@ -57,7 +43,7 @@ def calculate_option_payoffs(paths, K, option_type='call'):
 
 
 def pnl_analysis_tab(model_params):
-    """Monte Carlo Simulation tab content"""
+    """Monte Carlo simulation tab."""
     
     # Portfolio Construction Section
     st.markdown("## Portfolio Construction")

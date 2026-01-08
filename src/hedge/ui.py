@@ -6,7 +6,7 @@ import streamlit as st
 
 
 def render_sidebar():
-    """Render the sidebar with parameters and settings."""
+    """Render sidebar."""
     with st.sidebar:
         st.title("Parameters")
         
@@ -18,7 +18,7 @@ def render_sidebar():
 
 
 def render_intro():
-    """Render the introduction section."""
+    """Render intro section."""
     st.markdown("""
     ### Toy Market
     

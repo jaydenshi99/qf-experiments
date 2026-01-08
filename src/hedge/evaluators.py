@@ -32,17 +32,7 @@ _SAFE_FUNCTIONS = {
 
 
 def _safe_eval(node, h_array, investment=None):
-    """
-    Safely evaluate an AST node with access to H_t variables and investment amount.
-    
-    Args:
-        node: AST node to evaluate
-        h_array: array where h_array[i] = H_{i+1} (index 0 = H_1, index 1 = H_2, etc.)
-        investment: dollar amount invested (accessible as variable 'I')
-    
-    Returns:
-        float: evaluated result
-    """
+    """Evaluate AST node with H_t and I variables."""
     if isinstance(node, ast.Num):  # Python < 3.8
         return node.n
     elif isinstance(node, ast.Constant):  # Python >= 3.8
@@ -90,65 +80,18 @@ def _safe_eval(node, h_array, investment=None):
 
 
 def evaluate_payoff_ast(ast_node, h_array, investment=None):
-    """
-    Evaluate a pre-parsed AST node given H_t values and investment amount.
-    
-    Args:
-        ast_node: Pre-parsed AST node from parse_payoff_function()
-        h_array: array where h_array[i] = H_{i+1} (index 0 = H_1, index 1 = H_2, etc.)
-        investment: dollar amount invested (accessible as variable 'I' in payoff function)
-    
-    Returns:
-        float: total profit/loss from this bet (not per dollar)
-    
-    Example:
-        >>> from .parsers import parse_payoff_function
-        >>> import numpy as np
-        >>> tree = parse_payoff_function("max(H_5 - 3, 0) * 0.5 * I")
-        >>> h_array = np.array([1, 2, 3, 4, 4])  # H_1=1, H_2=2, H_3=3, H_4=4, H_5=4
-        >>> evaluate_payoff_ast(tree, h_array, investment=1.0)
-        0.5
-    """
+    """Evaluate pre-parsed AST."""
     return _safe_eval(ast_node, h_array, investment)
 
 
 def evaluate_payoff_function(payoff_expr, h_array, investment=None):
-    """
-    Evaluate a payoff function expression given H_t values and investment amount.
-    (Convenience function that parses and evaluates - use parse_payoff_function + evaluate_payoff_ast for repeated evaluations)
-    
-    Args:
-        payoff_expr: String expression like "max(H_5 - 3, 0) * 0.5 * I - 0.1 * I"
-        h_array: array where h_array[i] = H_{i+1} (index 0 = H_1, index 1 = H_2, etc.)
-        investment: dollar amount invested (accessible as variable 'I' in payoff function)
-    
-    Returns:
-        float: total profit/loss from this bet (not per dollar)
-    
-    Example:
-        >>> import numpy as np
-        >>> h_array = np.array([1, 2, 3, 4, 4])  # H_1=1, H_2=2, H_3=3, H_4=4, H_5=4
-        >>> evaluate_payoff_function("max(H_5 - 3, 0) * 0.5 * I", h_array, investment=1.0)
-        0.5
-        >>> h_array = np.array([0, 1, 2, 2, 2])  # H_1=0, H_2=1, H_3=2, H_4=2, H_5=2
-        >>> evaluate_payoff_function("max(H_5 - 3, 0) * 0.5 * I", h_array, investment=1.0)
-        0.0
-    """
+    """Parse and evaluate payoff expression."""
     ast_node = parse_payoff_function(payoff_expr)
     return evaluate_payoff_ast(ast_node, h_array, investment)
 
 
 def evaluate_condition(condition, H):
-    """
-    Evaluate a condition given a sequence of cumulative heads.
-    
-    Args:
-        condition: String like "H_5 >= 3"
-        H: numpy array where H[t] = number of heads up to time t (0-indexed)
-    
-    Returns:
-        bool: whether the condition is satisfied
-    """
+    """Evaluate condition against cumulative heads."""
     t, operator, k = parse_condition(condition)
     
     # Check if we have enough flips

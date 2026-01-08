@@ -4,23 +4,13 @@ from .parsers import parse_condition, parse_payoff_function, get_max_time_from_p
 from .evaluators import evaluate_payoff_ast, evaluate_condition
 
 def get_ht_from_binary(binary_string):
-    """
-    Converts a binary string to a list of heads
-    """
+    """Convert binary string to cumulative heads."""
     flips = [int(bit) for bit in binary_string]
     return np.cumsum(flips)
 
 
 def get_max_time_from_bets(bets):
-    """
-    Find the maximum time step from all bets.
-    
-    Args:
-        bets: list of bet dictionaries
-        
-    Returns:
-        int: maximum time step n
-    """
+    """Find max time from bets."""
     n = 0
     for bet in bets:
         if 'payoff' in bet:
@@ -33,17 +23,12 @@ def get_max_time_from_bets(bets):
 
 
 def _get_max_time_from_bets(bets):
-    """Internal alias for backward compatibility."""
+    """Backward compatibility alias."""
     return get_max_time_from_bets(bets)
 
 
 def get_profit_distribution_analytical(bets, allocations, p):
-    """
-    Calculates the pmf of the profit distribution for a set of given bets and allocations.
-    
-    This method enumerates all 2^n possible sequences, giving exact results but with
-    exponential time complexity O(2^n). Use this when n (max time) is small.
-    """
+    """Calculate exact profit distribution by enumerating all outcomes."""
 
     # parse bets
     parsed_bets = []
@@ -88,9 +73,7 @@ def get_profit_distribution_analytical(bets, allocations, p):
     return profit_distribution
 
 def get_profit_distribution_monte_carlo(bets, allocations, p, n_simulations=3000):
-    """
-    Calculates the profit distribution using Monte Carlo simulation
-    """
+    """Calculate profit distribution via Monte Carlo."""
     # parse bets
     parsed_bets = []
     for bet in bets:
@@ -132,15 +115,11 @@ def get_profit_distribution_monte_carlo(bets, allocations, p, n_simulations=3000
     return profit_distribution
 
 def get_expected_profit(profit_distribution):
-    """
-    Calculates the expected profit from a profit distribution
-    """
+    """Calculate expected profit."""
     return sum(profit * probability for profit, probability in profit_distribution.items())
 
 def get_volatility(profit_distribution, total_invested):
-    """
-    Calculates the volatility (standard deviation of returns) from a profit distribution.
-    """
+    """Calculate volatility (std dev of returns)."""
     if total_invested == 0:
         return 0.0
     
@@ -163,9 +142,7 @@ def get_volatility(profit_distribution, total_invested):
 
 
 def get_profit_distribution(bets, allocations, p, n_simulations=5000, analytical_threshold=18):
-    """
-    Automatically chooses between analytical and Monte Carlo methods based on time.
-    """
+    """Auto-select analytical or Monte Carlo method."""
     n = _get_max_time_from_bets(bets)
     
     if n <= analytical_threshold:
@@ -175,10 +152,7 @@ def get_profit_distribution(bets, allocations, p, n_simulations=5000, analytical
 
 
 def get_bet_statistics_per_dollar(bets, p, n_simulations=5000, analytical_threshold=18):
-    """
-    Calculate expected profit, variance, and covariance per dollar for bets.
-    Only needs to calculate: E1, E2, Var1, Var2, Cov12 - then everything else is analytical.
-    """
+    """Calculate per-dollar statistics for bets."""
     n_bets = len(bets)
     expected_profit_per_dollar = []
     variance_per_dollar = []
@@ -241,13 +215,7 @@ def get_bet_statistics_per_dollar(bets, p, n_simulations=5000, analytical_thresh
 
 
 def calculate_portfolio_stats(allocations, stats_per_dollar):
-    """
-    Analytically calculate portfolio stats from per-dollar statistics.
-    For allocations [A1, A2] with stats E1, E2, Var1, Var2, Cov12:
-    - Expected profit = A1*E1 + A2*E2
-    - Variance of returns = (A1^2*Var1 + A2^2*Var2 + 2*A1*A2*Cov12) / (A1+A2)^2
-    - Volatility = sqrt(Variance) * 100%
-    """
+    """Calculate portfolio stats from per-dollar stats."""
     allocations = np.array(allocations)
     E = np.array(stats_per_dollar['expected_profit_per_dollar'])
     Cov = stats_per_dollar['covariance_matrix']
@@ -267,15 +235,7 @@ def calculate_portfolio_stats(allocations, stats_per_dollar):
 
 
 def get_optimal_allocation(bets, p, target_return, n_simulations=5000, analytical_threshold=18):
-    """
-    Calculate optimal allocation for a portfolio of bets given a target return per dollar.
-    
-    Uses the analytical solution for mean-variance portfolio optimization.
-
-        
-    Returns:
-        numpy array: Optimal allocation vector (sums to 1)
-    """
+    """Calculate optimal allocation for target return."""
     # Get statistics per dollar
     stats_per_dollar = get_bet_statistics_per_dollar(bets, p, n_simulations, analytical_threshold)
     

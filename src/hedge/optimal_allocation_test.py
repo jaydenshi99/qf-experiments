@@ -14,7 +14,7 @@ from src.hedge.calculations import (
 
 
 def render_optimal_allocation_test(bets, p):
-    """Render the optimal allocation test section."""
+    """Render optimal allocation test."""
     if not bets:
         return
     

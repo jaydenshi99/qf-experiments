@@ -11,43 +11,7 @@ from typing import Literal, Optional
 
 
 class BinomialModel:
-    """
-    A class to implement the binomial options pricing model.
-    
-    The binomial model is a discrete-time model for pricing options that assumes
-    the underlying asset price can move up or down by specific factors over
-    each time step.
-    
-    Parameters
-    ----------
-    S0 : float
-        Initial stock price
-    K : float
-        Strike price of the option
-    T : float
-        Time to maturity (in years)
-    r : float
-        Risk-free interest rate (annual)
-    sigma : float
-        Volatility of the underlying asset (annual)
-    n_steps : int
-        Number of time steps in the binomial tree
-    option_type : str, optional
-        Type of option: 'call' or 'put' (default: 'call')
-    
-    Attributes
-    ----------
-    dt : float
-        Time step size (T / n_steps)
-    u : float
-        Up factor for stock price movement
-    d : float
-        Down factor for stock price movement
-    p : float
-        Risk-neutral probability of up movement
-    q : float
-        Risk-neutral probability of down movement (1 - p)
-    """
+    """Binomial options pricing model."""
     
     def __init__(
         self,
@@ -60,33 +24,7 @@ class BinomialModel:
         option_type: Literal['call', 'put'] = 'call',
         option_style: Literal['european', 'american'] = 'european'
     ):
-        """
-        Initialize the BinomialModel with the given parameters.
-        
-        Parameters
-        ----------
-        S0 : float
-            Initial stock price
-        K : float
-            Strike price of the option
-        T : float
-            Time to maturity (in years)
-        r : float
-            Risk-free interest rate (annual)
-        sigma : float
-            Volatility of the underlying asset (annual)
-        n_steps : int
-            Number of time steps in the binomial tree
-        option_type : str, optional
-            Type of option: 'call' or 'put' (default: 'call')
-        option_style : str, optional
-            Style of option: 'european' or 'american' (default: 'european')
-        
-        Raises
-        ------
-        ValueError
-            If any parameter is invalid
-        """
+        """Initialize BinomialModel."""
         # Validate inputs
         self._validate_inputs(S0, K, T, r, sigma, n_steps, option_type, option_style)
         
@@ -133,19 +71,7 @@ class BinomialModel:
         option_type: str,
         option_style: str
     ) -> None:
-        """
-        Validate input parameters.
-        
-        Parameters
-        ----------
-        S0, K, T, r, sigma, n_steps, option_type
-            Parameters to validate
-            
-        Raises
-        ------
-        ValueError
-            If any parameter is invalid
-        """
+        """Validate inputs."""
         if S0 <= 0:
             raise ValueError("Initial stock price S0 must be positive")
         
@@ -174,14 +100,7 @@ class BinomialModel:
             raise ValueError("Option style must be 'european' or 'american'")
     
     def get_model_info(self) -> dict:
-        """
-        Get a summary of the model parameters.
-        
-        Returns
-        -------
-        dict
-            Dictionary containing all model parameters and derived values
-        """
+        """Get model parameters summary."""
         return {
             'S0': self.S0,
             'K': self.K,
@@ -199,7 +118,7 @@ class BinomialModel:
         }
     
     def __repr__(self) -> str:
-        """String representation of the BinomialModel."""
+        """String representation."""
         return (
             f"BinomialModel(S0={self.S0}, K={self.K}, T={self.T}, "
             f"r={self.r}, sigma={self.sigma}, n_steps={self.n_steps}, "
@@ -207,7 +126,7 @@ class BinomialModel:
         )
     
     def __str__(self) -> str:
-        """Human-readable string representation."""
+        """Human-readable representation."""
         return (
             f"Binomial Options Pricing Model\n"
             f"Stock Price: ${self.S0:.2f}\n"
@@ -223,7 +142,7 @@ class BinomialModel:
         )
     
     def build_stock_price_tree(self):
-        """Build the stock price tree."""
+        """Build stock price tree."""
         try:
             from .tree import BinomialTree
         except ImportError:
@@ -235,14 +154,14 @@ class BinomialModel:
         self.tree.build_stock_price_tree()
     
     def build_option_price_tree(self):
-        """Build the option price tree using backward induction."""
+        """Build option price tree."""
         if self.tree is None:
             self.build_stock_price_tree()
         
         self.tree.build_option_price_tree()
     
     def get_option_price(self):
-        """Get the current option price."""
+        """Get option price."""
         if self.tree is None:
             self.build_stock_price_tree()
         

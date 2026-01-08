@@ -13,18 +13,7 @@ from src.hedge.calculations import (
 
 
 def generate_heatmap(bets, p, step_size=0.02, n_sims=3000):
-    """
-    Generate allocation heatmaps for two bets.
-    
-    Args:
-        bets: List of bet dictionaries
-        p: Probability of heads
-        step_size: Step size for allocation grid
-        n_sims: Number of Monte Carlo simulations
-    
-    Returns:
-        tuple: (fig, expected_returns, std_devs, allocations_bet1, allocations_bet2, optimal_info, min_volatility)
-    """
+    """Generate allocation heatmaps."""
     # Create allocation grid (0% to 100%)
     allocations_bet1 = np.arange(0, 1 + step_size, step_size)
     allocations_bet2 = np.arange(0, 1 + step_size, step_size)
@@ -217,7 +206,7 @@ def generate_heatmap(bets, p, step_size=0.02, n_sims=3000):
 
 
 def render_heatmap_section(bets, p):
-    """Render the heatmap section UI."""
+    """Render heatmap section."""
     if bets:
         st.markdown("---")
         st.markdown("### Allocation Heatmaps")

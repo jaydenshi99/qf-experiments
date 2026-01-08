@@ -10,7 +10,7 @@ from .core import calculate_node_coordinates, plot_american_options_tree, compar
 
 
 def theoretical_prices_tab(model_params):
-    """Theoretical Prices tab content"""
+    """Theoretical prices tab."""
     try:
         # Extract parameters from model_params
         show_intermediate = model_params['show_intermediate']

@@ -12,38 +12,16 @@ except ImportError:
 
 
 class BinomialTree:
-    """
-    A simple tree structure for the binomial model.
-    
-    Attributes
-    ----------
-    model : BinomialModel
-        The binomial model instance
-    nodes : Dict[Tuple[int, int], BinomialNode]
-        Dictionary mapping (time_step, node_index) to nodes
-    root : Optional[BinomialNode]
-        Root node of the tree
-    """
+    """Tree structure for binomial model."""
     
     def __init__(self, model):
-        """
-        Initialize the tree with a binomial model.
-        
-        Parameters
-        ----------
-        model : BinomialModel
-            The binomial model instance
-        """
+        """Initialize tree."""
         self.model = model
         self.nodes: Dict[Tuple[int, int], BinomialNode] = {}
         self.root: Optional[BinomialNode] = None
     
     def build_stock_price_tree(self) -> None:
-        """
-        Build the stock price tree structure.
-        
-        Creates all nodes with their stock prices and parent-child relationships.
-        """
+        """Build stock price tree."""
         # Clear existing nodes
         self.nodes.clear()
         
@@ -89,14 +67,7 @@ class BinomialTree:
                         node.parent = parent
     
     def build_option_price_tree(self, option_type: str = None) -> None:
-        """
-        Calculate option prices using backward induction.
-        
-        Parameters
-        ----------
-        option_type : str, optional
-            Option type ('call' or 'put'). If None, uses model's option_type.
-        """
+        """Calculate option prices via backward induction."""
         if option_type is None:
             option_type = self.model.option_type
         
@@ -141,14 +112,7 @@ class BinomialTree:
                     node.option_price = holding_value
     
     def get_option_price(self) -> float:
-        """
-        Get the current option price from the root node.
-        
-        Returns
-        -------
-        float
-            Option price at time 0
-        """
+        """Get option price from root."""
         if self.root is None:
             raise ValueError("Tree not built yet. Call build_stock_price_tree() first.")
         
@@ -158,19 +122,7 @@ class BinomialTree:
         return self.root.option_price
     
     def get_nodes_at_time(self, time_step: int) -> List[BinomialNode]:
-        """
-        Get all nodes at a specific time step.
-        
-        Parameters
-        ----------
-        time_step : int
-            Time step
-            
-        Returns
-        -------
-        List[BinomialNode]
-            List of nodes at the specified time step
-        """
+        """Get nodes at time step."""
         nodes = []
         for i in range(time_step + 1):
             if (time_step, i) in self.nodes:
@@ -178,14 +130,7 @@ class BinomialTree:
         return nodes
     
     def get_terminal_nodes(self) -> List[BinomialNode]:
-        """
-        Get all terminal nodes (final time step).
-        
-        Returns
-        -------
-        List[BinomialNode]
-            List of terminal nodes
-        """
+        """Get terminal nodes."""
         return self.get_nodes_at_time(self.model.n_steps)
     
     def __repr__(self) -> str:
